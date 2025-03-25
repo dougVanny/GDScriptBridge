@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <TargetFramework>netstandard2.0</TargetFramework>
+	  <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+	  <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="GDShrapt.Reader" Version="4.3.1.2-alpha" GeneratePathProperty="true" PrivateAssets="all" />
+
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.5.0" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.5.0" GeneratePathProperty="true" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Scripting.Common" GeneratePathProperty="true" Version="4.5.0" PrivateAssets="all" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<GetTargetPathDependsOn>$(GetTargetPathDependsOn);GetDependencyTargetPaths</GetTargetPathDependsOn>
+	</PropertyGroup>
+
+	<Target Name="GetDependencyTargetPaths">
+		<ItemGroup>
+			<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+
+			<TargetPathWithTargetPlatformMoniker Include="$(PkgGDShrapt_Reader)\lib\netstandard2.0\GDShrapt.Reader.dll" IncludeRuntimeDependency="false" />
+			<None Include="$(PkgGDShrapt_Reader)\lib\netstandard2.0\GDShrapt.Reader.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+
+			<TargetPathWithTargetPlatformMoniker Include="$(PkgMicrosoft_CodeAnalysis_CSharp_Scripting)\lib\netstandard2.0\Microsoft.CodeAnalysis.CSharp.Scripting.dll" IncludeRuntimeDependency="false" />
+			<None Include="$(PkgMicrosoft_CodeAnalysis_CSharp_Scripting)\lib\netstandard2.0\Microsoft.CodeAnalysis.CSharp.Scripting.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+
+			<TargetPathWithTargetPlatformMoniker Include="$(PkgMicrosoft_CodeAnalysis_Scripting_Common)\lib\netstandard2.0\Microsoft.CodeAnalysis.Scripting.dll" IncludeRuntimeDependency="false" />
+			<None Include="$(PkgMicrosoft_CodeAnalysis_Scripting_Common)\lib\netstandard2.0\Microsoft.CodeAnalysis.Scripting.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		</ItemGroup>
+	</Target>
+
+</Project>
