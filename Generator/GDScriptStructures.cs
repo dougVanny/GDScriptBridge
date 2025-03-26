@@ -1,62 +1,11 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Scripting;
-using GDShrapt.Reader;
+﻿using GDShrapt.Reader;
+using Microsoft.CodeAnalysis.CSharp.Scripting;
+using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace GDScriptBridge.Generator
 {
-	public class GDScriptClass
-	{
-		public GDClassDeclaration classDeclaration;
-
-		public string className;
-		public string extends;
-		
-		public List<GDScriptEnum> enums = new List<GDScriptEnum>();
-		public List<GDScriptField> variables = new List<GDScriptField>();
-		public List<GDScriptMethod> methods = new List<GDScriptMethod>();
-		public List<GDScriptSignal> signals = new List<GDScriptSignal>();
-
-		public bool isValid
-		{
-			get
-			{
-				return className != null;
-			}
-		}
-
-		public GDScriptClass(string fileContent)
-		{
-			classDeclaration = new GDScriptReader().ParseFileContent(fileContent);
-
-			if (classDeclaration.ClassName == null) return;
-
-			className = classDeclaration.ClassName.Identifier.ToString();
-			if (classDeclaration.Extends != null) extends = classDeclaration.Extends.Type.ToString();
-
-            foreach (GDEnumDeclaration enumDeclaration in classDeclaration.Enums)
-            {
-				enums.Add(new GDScriptEnum(enumDeclaration));
-            }
-
-            foreach (GDVariableDeclaration variableDeclaration in classDeclaration.Variables)
-            {
-				if (!variableDeclaration.PreviousNode.ToString().StartsWith("@export")) continue;
-
-				variables.Add(new GDScriptField(variableDeclaration));
-			}
-
-            foreach (GDMethodDeclaration methodDeclaration in classDeclaration.Methods)
-            {
-				methods.Add(new GDScriptMethod(methodDeclaration));
-            }
-
-            foreach (GDSignalDeclaration signalDeclaration in classDeclaration.Signals)
-            {
-				signals.Add(new GDScriptSignal(signalDeclaration));
-            }
-        }
-	}
-
 	public class GDScriptEnum
 	{
 		public string name;
@@ -66,17 +15,18 @@ namespace GDScriptBridge.Generator
 		{
 			name = enumDeclaration.Identifier.ToString();
 
-            foreach (GDEnumValueDeclaration enumValueDeclaration in enumDeclaration.Values)
-            {
+			foreach (GDEnumValueDeclaration enumValueDeclaration in enumDeclaration.Values)
+			{
 				values.Add(new GDScriptEnumValue(enumValueDeclaration));
 			}
-        }
+		}
 	}
 
 	public class GDScriptEnumValue
 	{
 		public string name;
-		public int? declaredValue;
+		public string declaredValueExpression;
+		public int declaredValue;
 
 		public GDScriptEnumValue(GDEnumValueDeclaration enumValueDeclaration)
 		{
@@ -84,7 +34,9 @@ namespace GDScriptBridge.Generator
 
 			if (enumValueDeclaration.Value != null)
 			{
-				if (CSharpScript.EvaluateAsync(enumValueDeclaration.Value.ToString()).Result is int intResult)
+				declaredValueExpression = enumValueDeclaration.Value.ToString();
+
+				if (CSharpScript.EvaluateAsync(declaredValueExpression).Result is int intResult)
 				{
 					declaredValue = intResult;
 				}
@@ -128,11 +80,11 @@ namespace GDScriptBridge.Generator
 		{
 			name = signalDeclaration.Identifier.ToString();
 
-            foreach (GDParameterDeclaration parameterDeclaration in signalDeclaration.Parameters)
-            {
+			foreach (GDParameterDeclaration parameterDeclaration in signalDeclaration.Parameters)
+			{
 				parameters.Add(new GDScriptField(parameterDeclaration));
 			}
-        }
+		}
 	}
 
 	public class GDScriptMethod
@@ -168,8 +120,8 @@ namespace GDScriptBridge.Generator
 	{
 		public string name;
 		public string type;
-		
-		public bool hasDefaultValue;
+
+		public string defaultValueExpression;
 		public object defaultValue;
 
 		public GDScriptMethodParam(GDParameterDeclaration parameterDeclaration)
@@ -179,11 +131,11 @@ namespace GDScriptBridge.Generator
 
 			if (parameterDeclaration.DefaultValue != null)
 			{
-				hasDefaultValue = true;
+				defaultValueExpression = parameterDeclaration.DefaultValue.ToString();
 
 				try
 				{
-					defaultValue = CSharpScript.EvaluateAsync(parameterDeclaration.DefaultValue.ToString()).Result;
+					defaultValue = CSharpScript.EvaluateAsync(defaultValueExpression).Result;
 				}
 				catch
 				{
@@ -197,11 +149,11 @@ namespace GDScriptBridge.Generator
 
 			if (type != null) ret += " : " + type;
 
-			if (hasDefaultValue)
+			if (defaultValueExpression != null)
 			{
 				ret += " = ";
 
-				if (defaultValue == null) ret += "null";
+				if (defaultValue == null) ret += defaultValueExpression;
 				else if (defaultValue is string) ret += $"\"{defaultValue}\"";
 				else ret += defaultValue;
 			}
