@@ -1,5 +1,4 @@
 ﻿using GDShrapt.Reader;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -26,21 +25,12 @@ namespace GDScriptBridge.Generator
 	{
 		public string name;
 		public string declaredValueExpression;
-		public int declaredValue;
 
 		public GDScriptEnumValue(GDEnumValueDeclaration enumValueDeclaration)
 		{
 			name = enumValueDeclaration.Identifier.ToString();
 
-			if (enumValueDeclaration.Value != null)
-			{
-				declaredValueExpression = enumValueDeclaration.Value.ToString();
-
-				if (CSharpScript.EvaluateAsync(declaredValueExpression).Result is int intResult)
-				{
-					declaredValue = intResult;
-				}
-			}
+			if (enumValueDeclaration.Value != null) declaredValueExpression = enumValueDeclaration.Value.ToString();
 		}
 	}
 
@@ -122,25 +112,13 @@ namespace GDScriptBridge.Generator
 		public string type;
 
 		public string defaultValueExpression;
-		public object defaultValue;
 
 		public GDScriptMethodParam(GDParameterDeclaration parameterDeclaration)
 		{
 			name = parameterDeclaration.Identifier.ToString();
 			type = parameterDeclaration.Type == null ? null : parameterDeclaration.Type.ToString();
 
-			if (parameterDeclaration.DefaultValue != null)
-			{
-				defaultValueExpression = parameterDeclaration.DefaultValue.ToString();
-
-				try
-				{
-					defaultValue = CSharpScript.EvaluateAsync(defaultValueExpression).Result;
-				}
-				catch
-				{
-				}
-			}
+			if (parameterDeclaration.DefaultValue != null) defaultValueExpression = parameterDeclaration.DefaultValue.ToString();
 		}
 
 		public override string ToString()
@@ -151,11 +129,7 @@ namespace GDScriptBridge.Generator
 
 			if (defaultValueExpression != null)
 			{
-				ret += " = ";
-
-				if (defaultValue == null) ret += defaultValueExpression;
-				else if (defaultValue is string) ret += $"\"{defaultValue}\"";
-				else ret += defaultValue;
+				ret += " = " + defaultValueExpression;
 			}
 
 			return ret;

@@ -1,5 +1,4 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Scripting;
-using GDShrapt.Reader;
+﻿using GDShrapt.Reader;
 using System.Collections.Generic;
 using System.Text;
 using System;
