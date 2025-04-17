@@ -1,4 +1,5 @@
 ﻿using GDScriptBridge.Bundler;
+using GDScriptBridge.Types;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
@@ -18,12 +19,15 @@ namespace GDScriptBridge.Generator
 
 		public void Execute(GeneratorExecutionContext context)
 		{
-			//Debugger.Launch();
+			Debugger.Launch();
 
 			string godotRoot;
 			context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.godotprojectdir", out godotRoot);
-
 			Uri godotRootUri = new Uri(Uri.UnescapeDataString(godotRoot), UriKind.Absolute);
+
+			TypeConverterCollection typeConverter = new TypeConverterCollection();
+			typeConverter.Add(new VarTypes());
+			typeConverter.Add(new GodotTypes(context));
 
 			BaseCodeBundle codeBundle;
 
@@ -46,7 +50,7 @@ namespace GDScriptBridge.Generator
 
 				if (gdClass.isValid)
 				{
-					context.AddSource(gdClass.className, gdClass.GenerateSource());
+					context.AddSource(gdClass.className + "A", gdClass.GenerateSource());
 				}
 			}
 		}
