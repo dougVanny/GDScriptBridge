@@ -29,6 +29,8 @@ namespace GDScriptBridge.Generator
 			typeConverter.Add(new VarTypes());
 			typeConverter.Add(new GodotTypes(context));
 
+			Types.TypeInfo typeInfo = typeConverter.GetTypeInfo("Array[Node.ProcessMode]");
+
 			BaseCodeBundle codeBundle;
 
 			codeBundle = new BaseGDBridgeBundle();
@@ -50,7 +52,7 @@ namespace GDScriptBridge.Generator
 
 				if (gdClass.isValid)
 				{
-					context.AddSource(gdClass.className + "A", gdClass.GenerateSource());
+					context.AddSource(gdClass.className, gdClass.GenerateSource());
 				}
 			}
 		}

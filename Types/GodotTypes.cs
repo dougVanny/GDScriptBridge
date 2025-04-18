@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using GDShrapt.Reader;
+using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,13 +11,12 @@ namespace GDScriptBridge.Types
 	{
 		const string GODOT_NAMESPACE = "Godot";
 		const string GODOT_OBJECT_NAME = "GodotObject";
+		const string ENUM_SUFFIX = "Enum";
 
-		HashSet<string> knownTypes = new HashSet<string>();
+		Dictionary<string, TypeInfo> knownTypes = new Dictionary<string, TypeInfo>();
 
 		public GodotTypes(GeneratorExecutionContext context)
 		{
-			Dictionary<INamespaceSymbol, List<INamedTypeSymbol>> namespaceTypes = new Dictionary<INamespaceSymbol, List<INamedTypeSymbol>>(SymbolEqualityComparer.Default);
-
 			foreach (IAssemblySymbol assemblySymbol in context.Compilation.SourceModule.ReferencedAssemblySymbols)
             {
 				foreach (INamespaceSymbol namespaceSymbol in GetAllNamespaces(assemblySymbol.GlobalNamespace))
@@ -28,79 +28,81 @@ namespace GDScriptBridge.Types
 						namedTypeSymbolList.AddRange(AllNestedTypesAndSelf(typeMembers));
 					}
 
-					namespaceTypes.Add(namespaceSymbol, namedTypeSymbolList);
-				}
-            }
-
-			foreach (INamespaceSymbol namespaceSymbol in namespaceTypes.Keys)
-			{
-				if (GODOT_NAMESPACE.Equals(namespaceSymbol.Name))
-				{
-					INamedTypeSymbol godotObject = null;
-
-					foreach (INamedTypeSymbol namedTypeSymbol in namespaceTypes[namespaceSymbol])
+					if (GODOT_NAMESPACE.Equals(namespaceSymbol.Name))
 					{
-						if (GODOT_OBJECT_NAME.Equals(namedTypeSymbol.Name) && SymbolEqualityComparer.Default.Equals(namespaceSymbol, namedTypeSymbol.ContainingSymbol))
+						INamedTypeSymbol godotObject = null;
+
+						foreach (INamedTypeSymbol namedTypeSymbol in namedTypeSymbolList)
 						{
-							godotObject = namedTypeSymbol;
-
-							break;
-						}
-					}
-
-					if (godotObject == null) continue;
-
-					foreach (INamedTypeSymbol namedTypeSymbol in namespaceTypes[namespaceSymbol])
-					{
-						if (namedTypeSymbol.Name.StartsWith("<"))
-						{
-							continue;
-						}
-						else if (namedTypeSymbol.TypeKind == TypeKind.Class)
-						{
-							INamedTypeSymbol test = namedTypeSymbol;
-
-							while (test != null && !SymbolEqualityComparer.Default.Equals(test, godotObject))
+							if (GODOT_OBJECT_NAME.Equals(namedTypeSymbol.Name) && SymbolEqualityComparer.Default.Equals(namespaceSymbol, namedTypeSymbol.ContainingSymbol))
 							{
-								test = test.BaseType;
+								godotObject = namedTypeSymbol;
+
+								break;
+							}
+						}
+
+						if (godotObject == null) continue;
+
+						foreach (INamedTypeSymbol namedTypeSymbol in namedTypeSymbolList)
+						{
+							if (namedTypeSymbol.Name.StartsWith("<"))
+							{
+								continue;
+							}
+							else if (namedTypeSymbol.TypeKind == TypeKind.Class)
+							{
+								if (!isValidClass(namedTypeSymbol, godotObject)) continue;
+							}
+							else if (namedTypeSymbol.TypeKind == TypeKind.Enum || namedTypeSymbol.TypeKind == TypeKind.Struct)
+							{
+								INamedTypeSymbol containingSymbol = namedTypeSymbol.ContainingSymbol as INamedTypeSymbol;
+
+								if (containingSymbol != null && containingSymbol.TypeKind == TypeKind.Class)
+								{
+									if (!isValidClass(containingSymbol, godotObject)) continue;
+								}
+							}
+							else
+							{
+								continue;
 							}
 
-							if (test == null) continue;
-						}
-						else if (namedTypeSymbol.TypeKind == TypeKind.Enum || namedTypeSymbol.TypeKind == TypeKind.Struct)
-						{
-							INamedTypeSymbol containingSymbol = namedTypeSymbol.ContainingSymbol as INamedTypeSymbol;
+							string fullName = namedTypeSymbol.Name;
 
-							if (containingSymbol != null && containingSymbol.TypeKind == TypeKind.Class)
+							INamedTypeSymbol parentType = namedTypeSymbol.ContainingSymbol as INamedTypeSymbol;
+							while (parentType != null)
 							{
-								INamedTypeSymbol test = containingSymbol;
+								fullName = parentType.Name + "." + fullName;
+								parentType = parentType.ContainingSymbol as INamedTypeSymbol;
+							}
 
-								while (test != null && !SymbolEqualityComparer.Default.Equals(test, godotObject))
+							if (namedTypeSymbol.TypeKind == TypeKind.Enum)
+							{
+								TypeInfoEnum typeInfoEnum = new TypeInfoEnum(fullName);
+
+								if (fullName.EndsWith(ENUM_SUFFIX))
 								{
-									test = test.BaseType;
+									typeInfoEnum.gdScriptName = fullName.Substring(0, fullName.Length - ENUM_SUFFIX.Length);
 								}
 
-								if (test == null) continue;
+								foreach(string member in namedTypeSymbol.MemberNames)
+								{
+									if (member[0] == '.') continue;
+
+									typeInfoEnum.options.Add(member);
+								}
+
+								knownTypes.Add(typeInfoEnum.gdScriptName, typeInfoEnum);
+							}
+							else
+							{
+								knownTypes.Add(fullName, new TypeInfo(fullName));
 							}
 						}
-						else
-						{
-							continue;
-						}
-
-						string fullName = namedTypeSymbol.Name;
-
-						INamedTypeSymbol parentType = namedTypeSymbol.ContainingSymbol as INamedTypeSymbol;
-						while (parentType != null && !SymbolEqualityComparer.Default.Equals(parentType, namedTypeSymbol))
-						{
-							fullName = parentType.Name + "." + fullName;
-							parentType = parentType.ContainingSymbol as INamedTypeSymbol;
-						}
-
-						knownTypes.Add(fullName);
 					}
 				}
-			}
+            }
 		}
 
 		private static IEnumerable<INamespaceSymbol> GetAllNamespaces(INamespaceSymbol root)
@@ -129,13 +131,25 @@ namespace GDScriptBridge.Types
 			}
 		}
 
-		public string GetConvertedType(string gdScriptType)
+		static bool isValidClass(INamedTypeSymbol namedTypeSymbol, INamedTypeSymbol godotObject)
 		{
-            foreach (string type in knownTypes)
+			INamedTypeSymbol test = namedTypeSymbol;
+
+			while (test != null && !SymbolEqualityComparer.Default.Equals(test, godotObject))
+			{
+				test = test.BaseType;
+			}
+
+			return test != null;
+		}
+
+		public TypeInfo GetTypeInfo(string gdScriptType)
+		{
+            foreach (string type in knownTypes.Keys)
             {
 				if (gdScriptType.ToLower().Equals(type.ToLower()))
 				{
-					return type;
+					return knownTypes[type];
 				}
             }
 

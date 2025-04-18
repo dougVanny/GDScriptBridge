@@ -2,6 +2,6 @@
 {
 	public interface ITypeConverter
 	{
-		string GetConvertedType(string gdScriptType);
+		TypeInfo GetTypeInfo(string gdScriptType);
 	}
 }
