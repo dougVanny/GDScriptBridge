@@ -50,14 +50,56 @@ namespace GDScriptBridge.Generator
 			name = parameterDeclaration.Identifier.ToString();
 			type = parameterDeclaration.Type == null ? null : parameterDeclaration.Type.ToString();
 		}
+	}
 
-		public override string ToString()
+	public class GDScriptInnerType : GDScriptField
+	{
+		public string preload = null;
+		public List<string> memberPath = null;
+
+		public GDScriptInnerType(GDVariableDeclaration variableDeclaration) : base(variableDeclaration)
 		{
-			string ret = name;
+			GDExpression expression = variableDeclaration.Initializer;
 
-			if (type != null) ret += " : " + type;
+			if (expression is GDIdentifierExpression identifierExpression)
+			{
+				memberPath = new List<string> { identifierExpression.Identifier.ToString() };
+			}
+			else
+			{
+				List<string> _memberPath = new List<string>();
 
-			return ret;
+				while (expression is GDMemberOperatorExpression memberOperatorExpression)
+				{
+					_memberPath.Insert(0, memberOperatorExpression.Identifier.ToString());
+					expression = memberOperatorExpression.CallerExpression;
+				}
+
+				if (expression is GDIdentifierExpression memberIdentifierExpression)
+				{
+					_memberPath.Insert(0, memberIdentifierExpression.Identifier.ToString());
+					memberPath = _memberPath;
+				}
+				else if (expression is GDCallExpression callExpression)
+				{
+					if (callExpression.CallerExpression is GDIdentifierExpression callerIdentifierExpression)
+					{
+						if (nameof(preload).Equals(callerIdentifierExpression.Identifier.ToString()))
+						{
+							preload = ((GDStringExpression)callExpression.Parameters[0]).String.EscapedSequence;
+							memberPath = _memberPath;
+						}
+					}
+				}
+			}
+		}
+
+		public bool isValid
+		{
+			get
+			{
+				return memberPath != null;
+			}
 		}
 	}
 
@@ -93,17 +135,6 @@ namespace GDScriptBridge.Generator
 				methodParams.Add(new GDScriptMethodParam(parameterDeclaration));
 			}
 		}
-
-		public override string ToString()
-		{
-			string ret = "func " + name;
-
-			ret += "(" + string.Join(", ", methodParams) + ")";
-
-			if (returnType != null) ret += " -> " + returnType;
-
-			return ret;
-		}
 	}
 
 	public class GDScriptMethodParam
@@ -119,20 +150,6 @@ namespace GDScriptBridge.Generator
 			type = parameterDeclaration.Type == null ? null : parameterDeclaration.Type.ToString();
 
 			if (parameterDeclaration.DefaultValue != null) defaultValueExpression = parameterDeclaration.DefaultValue.ToString();
-		}
-
-		public override string ToString()
-		{
-			string ret = name;
-
-			if (type != null) ret += " : " + type;
-
-			if (defaultValueExpression != null)
-			{
-				ret += " = " + defaultValueExpression;
-			}
-
-			return ret;
 		}
 	}
 }

@@ -19,6 +19,8 @@ namespace GDScriptBridge.Generator
 		public List<GDScriptMethod> methods = new List<GDScriptMethod>();
 		public List<GDScriptSignal> signals = new List<GDScriptSignal>();
 
+		public List<GDScriptInnerType> innerTypes = new List<GDScriptInnerType>();
+
 		public bool isValid
 		{
 			get
@@ -32,9 +34,7 @@ namespace GDScriptBridge.Generator
 			godotScriptPath = "res://" + filePath.Replace('\\', '/');
 			classDeclaration = new GDScriptReader().ParseFileContent(fileContent);
 
-			if (classDeclaration.ClassName == null) return;
-
-			className = classDeclaration.ClassName.Identifier.ToString();
+			if (classDeclaration.ClassName != null) className = classDeclaration.ClassName.Identifier.ToString();
 			if (classDeclaration.Extends != null) extends = classDeclaration.Extends.Type.ToString();
 
             foreach (GDEnumDeclaration enumDeclaration in classDeclaration.Enums)
@@ -44,7 +44,23 @@ namespace GDScriptBridge.Generator
 
             foreach (GDVariableDeclaration variableDeclaration in classDeclaration.Variables)
             {
-				variables.Add(new GDScriptField(variableDeclaration));
+				if (variableDeclaration.IsConstant)
+				{
+					GDScriptInnerType innerType = new GDScriptInnerType(variableDeclaration);
+
+					if (innerType.isValid)
+					{
+						innerTypes.Add(innerType);
+					}
+					else
+					{
+						variables.Add(innerType);
+					}
+				}
+				else
+				{
+					variables.Add(new GDScriptField(variableDeclaration));
+				}
 			}
 
             foreach (GDMethodDeclaration methodDeclaration in classDeclaration.Methods)
