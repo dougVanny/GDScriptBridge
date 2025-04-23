@@ -4,16 +4,20 @@ using GDShrapt.Reader;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 
 namespace GDScriptBridge.Generator
 {
 	public class GDScriptClass : GDScriptBase
 	{
+		static readonly TypeInfo TYPEINFO_VARIANT = new TypeInfo("Godot.Variant");
+
 		public string extends;
 		public string fullCSharpName;
 
 		public GDScriptClassFile owner;
+		public GDScriptClass parentClass;
 
 		public List<GDScriptEnum> enums = new List<GDScriptEnum>();
 		public List<GDScriptField> variables = new List<GDScriptField>();
@@ -44,11 +48,12 @@ namespace GDScriptBridge.Generator
 			ParseClass(classDeclaration.Members);
 		}
 
-		public GDScriptClass(GDScriptClassFile owner, string cSharpPath, GDInnerClassDeclaration innerClassDeclaration, UniqueSymbolConverter ownerClassUniqueSymbolConverter) : base(innerClassDeclaration.Identifier.ToString(), ownerClassUniqueSymbolConverter)
+		public GDScriptClass(GDScriptClassFile owner, GDScriptClass parentClass, GDInnerClassDeclaration innerClassDeclaration, UniqueSymbolConverter ownerClassUniqueSymbolConverter) : base(innerClassDeclaration.Identifier.ToString(), ownerClassUniqueSymbolConverter)
 		{
 			this.owner = owner;
+			this.parentClass = parentClass;
 
-			fullCSharpName = $"{cSharpPath}.{uniqueName}";
+			fullCSharpName = $"{parentClass.fullCSharpName}.{uniqueName}";
 
 			if (innerClassDeclaration.BaseType != null) extends = innerClassDeclaration.BaseType.ToString();
 
@@ -99,20 +104,22 @@ namespace GDScriptBridge.Generator
 
 			foreach (GDInnerClassDeclaration innerClassDeclaration in members.OfType<GDInnerClassDeclaration>())
 			{
-				innerClasses.Add(new GDScriptClass(owner, fullCSharpName, innerClassDeclaration, uniqueSymbolConverter));
+				innerClasses.Add(new GDScriptClass(owner, this, innerClassDeclaration, uniqueSymbolConverter));
 			}
 		}
 
-		public StringBuilder Generate(StringBuilder sb = null)
+		public StringBuilder Generate(GDScriptFolder folder, TypeConverterCollection globalTypeConverter, StringBuilder sb = null)
 		{
 			if (sb == null) sb = new StringBuilder();
+
+			FindType("Array [ bool ]", folder, globalTypeConverter);
 
 			sb.Append($"class {uniqueName} : GDScriptBridge.Bundled.BaseGDBridge");
 			using (CodeBlock.Brackets(sb))
 			{
 				foreach (GDScriptClass innerClass in innerClasses)
 				{
-					innerClass.Generate(sb);
+					innerClass.Generate(folder, globalTypeConverter, sb);
 				}
 
 				sb.Append($"public static {uniqueName} New()");
@@ -154,18 +161,19 @@ namespace GDScriptBridge.Generator
 					}
 				}
 
-				foreach (GDScriptField variable in variables)
-				{
-					string varType = convertType(variable.type);
+				List<GDScriptField> allVariables = variables.ToList();
+				allVariables.AddRange(typeReferences);
 
-					sb.Append($"public {varType ?? "Variant"} {variable.uniqueName}");
+				foreach (GDScriptField variable in allVariables)
+				{
+					TypeInfo typeInfo = FindType(variable.type, folder, globalTypeConverter)?? TYPEINFO_VARIANT;
+
+					sb.Append($"public {typeInfo.cSharpName} {variable.uniqueName}");
 					using (CodeBlock.Brackets(sb))
 					{
-						string getCast = varType == null ? "" : $"({varType})";
+						string getCast = typeInfo == TYPEINFO_VARIANT ? "" : $"({typeInfo.cSharpName})";
 
-						GDScriptEnum knownEnum = findKnownEnum(varType);
-
-						if (knownEnum != null)
+						if (typeInfo is TypeInfoEnum)
 						{
 							sb.Append($"get => {getCast}godotObject.Get(\"{variable.name}\").AsInt32();");
 							sb.Append($"set => godotObject.Set(\"{variable.name}\", (int)value);");
@@ -191,7 +199,9 @@ namespace GDScriptBridge.Generator
 							{
 								if (comma) angleBracketBuilder.Append(",");
 
-								angleBracketBuilder.Append(convertType(parameter.type) ?? "Variant");
+								TypeInfo typeInfo = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
+
+								angleBracketBuilder.Append(typeInfo.cSharpName);
 
 								comma = true;
 							}
@@ -207,7 +217,9 @@ namespace GDScriptBridge.Generator
 							{
 								if (comma) sb.Append(",");
 
-								sb.Append($"{convertType(parameter.type) ?? "Variant"} {parameter.name}");
+								TypeInfo typeInfo = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
+
+								sb.Append($"{typeInfo.cSharpName} {parameter.name}");
 
 								comma = true;
 							}
@@ -244,9 +256,9 @@ namespace GDScriptBridge.Generator
 				{
 					List<GDScriptMethod.Param> parametersToInitialize = new List<GDScriptMethod.Param>();
 
-					string retType = convertType(method.returnType) ?? "Variant";
+					TypeInfo returnTypeInfo = FindType(method.returnType, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
 
-					sb.Append($"public {retType} {method.uniqueName}");
+					sb.Append($"public {returnTypeInfo.cSharpName} {method.uniqueName}");
 					using (CodeBlock.Parenthesis(sb))
 					{
 						bool comma = false;
@@ -255,9 +267,9 @@ namespace GDScriptBridge.Generator
 						{
 							if (comma) sb.Append(",");
 
-							string paramType = convertType(parameter.type) ?? "Variant";
+							TypeInfo paramTypeInfo = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
 
-							if (paramType == "Variant" && parameter.defaultValueExpression != null)
+							if (paramTypeInfo == TYPEINFO_VARIANT && parameter.defaultValueExpression != null)
 							{
 								sb.Append($"Variant? {parameter.name} = null");
 
@@ -265,7 +277,7 @@ namespace GDScriptBridge.Generator
 							}
 							else
 							{
-								sb.Append($"{paramType} {parameter.name}");
+								sb.Append($"{paramTypeInfo.cSharpName} {parameter.name}");
 
 								if (parameter.defaultValueExpression != null)
 								{
@@ -286,17 +298,19 @@ namespace GDScriptBridge.Generator
 							{
 								sb.Append("default(Variant);");
 							}
+							/*
 							else if (looksLikeEnumValue(parameter.defaultValueExpression))
 							{
 								sb.Append($"Variant.CreateFrom((int){parameter.defaultValueExpression});");
 							}
+							*/
 							else
 							{
 								sb.Append($"Variant.CreateFrom({parameter.defaultValueExpression});");
 							}
 						}
 
-						if (retType != "void") sb.Append("Variant ret = ");
+						if (returnTypeInfo.cSharpName != "void") sb.Append("Variant ret = ");
 
 						sb.Append("godotObject.Call");
 						using (CodeBlock.Parenthesis(sb))
@@ -305,13 +319,13 @@ namespace GDScriptBridge.Generator
 
 							foreach (GDScriptMethod.Param parameter in method.methodParams)
 							{
-								GDScriptEnum enumType = findKnownEnum(parameter.type);
+								TypeInfo paramTypeInfo = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
 
 								if (parametersToInitialize.Contains(parameter))
 								{
 									sb.Append($", {parameter.name}.Value");
 								}
-								else if (enumType != null)
+								else if (paramTypeInfo is TypeInfoEnum)
 								{
 									sb.Append($", Variant.CreateFrom((int){parameter.name})");
 								}
@@ -323,10 +337,10 @@ namespace GDScriptBridge.Generator
 						}
 						sb.Append(";");
 
-						if (retType != "void")
+						if (returnTypeInfo.cSharpName != "void")
 						{
 							sb.Append("return ");
-							if (retType != "Variant") sb.Append($"({retType})");
+							if (returnTypeInfo != TYPEINFO_VARIANT) sb.Append($"({returnTypeInfo.cSharpName})");
 							sb.Append(" ret;");
 						}
 					}
@@ -342,29 +356,22 @@ namespace GDScriptBridge.Generator
 		}
 
 
-		string convertType(string type)
+		TypeInfo FindType(string type, GDScriptFolder folder, TypeConverterCollection globalTypeConverter)
 		{
 			if (type == null) return null;
-			if (type == "float") type = "double";
 
-			return type;
-		}
+			TypeInfo localTypeInfo = GetAsTypeInfo(folder).GetSubType(type);
+			if (localTypeInfo != null) return localTypeInfo;
 
-		GDScriptEnum findKnownEnum(string type)
-		{
-			foreach (GDScriptEnum _enum in enums)
+			if (parentClass != null)
 			{
-				if (_enum.name == type) return _enum;
+				return parentClass.FindType(type, folder, globalTypeConverter);
 			}
-
-			return null;
+			else
+			{
+				return globalTypeConverter.GetTypeInfo(type);
+			}
 		}
-
-		bool looksLikeEnumValue(string expression)
-		{
-			return expression.IndexOf('.') > 0 && char.IsLetter(expression[0]);
-		}
-
 	}
 
 	public class TypeInfoGDScriptClass : TypeInfo, ITypeInfoClass

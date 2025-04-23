@@ -5,10 +5,13 @@ using System;
 using GDScriptBridge.Utils;
 using GDScriptBridge.Types;
 using System.Linq;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
+using Microsoft.CodeAnalysis;
 
 namespace GDScriptBridge.Generator
 {
-	public class GDScriptClassFile : CodeGenerator
+	public class GDScriptClassFile
 	{
 		public const string GODOT_RES_DRIVE = "res://";
 
@@ -50,7 +53,12 @@ namespace GDScriptBridge.Generator
 			}
 		}
 
-		public override string Generate()
+		public SourceText GenerateSource(GDScriptFolder folder, TypeConverterCollection globalTypeConverter)
+		{
+			return CSharpSyntaxTree.ParseText(SourceText.From(Generate(folder, globalTypeConverter), Encoding.UTF8)).GetRoot().NormalizeWhitespace().SyntaxTree.GetText();
+		}
+
+		string Generate(GDScriptFolder folder, TypeConverterCollection globalTypeConverter)
 		{
 			StringBuilder sb = new StringBuilder();
 
@@ -63,7 +71,7 @@ namespace GDScriptBridge.Generator
 			using (CodeBlock.Brackets(sb))
 			{
 				sb.Append($"[GDScriptBridge.Bundled.ScriptPathAttribute(\"{godotScriptPath}\")]");
-				gdScriptClass.Generate(sb);
+				gdScriptClass.Generate(folder, globalTypeConverter, sb);
 			}
 
 			return sb.ToString();

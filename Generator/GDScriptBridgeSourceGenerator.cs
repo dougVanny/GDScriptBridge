@@ -1,5 +1,6 @@
 ﻿using GDScriptBridge.Bundler;
 using GDScriptBridge.Types;
+using GDScriptBridge.Utils;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
@@ -44,24 +45,20 @@ namespace GDScriptBridge.Generator
 			}
 			typeConverter.Add(gdScriptFolder);
 
-			Types.TypeInfo ti;
-			ti = typeConverter.GetTypeInfo("TestSourceGen.UltimateTest");
-			ti = typeConverter.GetTypeInfo("TestSourceGen.State");
-			ti = typeConverter.GetTypeInfo("TestSourceGen.A");
-			ti = typeConverter.GetTypeInfo("NamedClass");
-			ti = typeConverter.GetTypeInfo("NamedClass.LoadedScript");
-			ti = typeConverter.GetTypeInfo("InCls");
-			ti = typeConverter.GetTypeInfo("InCls.InnerClass");
-			ti = typeConverter.GetTypeInfo("InCls.InnerClass.InnerTwo");
-			ti = typeConverter.GetTypeInfo("InCls.InnerClass.InnerTwo.Lala");
+			UniqueSymbolConverter uniqueFileNameConverter = new UniqueSymbolConverter();
 
 			BaseCodeBundle codeBundle;
 
 			codeBundle = new BaseGDBridgeBundle();
-			context.AddSource(codeBundle.GetClassName(), codeBundle.GenerateSource());
+			context.AddSource(uniqueFileNameConverter.Convert(codeBundle.GetClassName()), codeBundle.GenerateSource());
 
 			codeBundle = new GDBridgeWrapperBundle();
-			context.AddSource(codeBundle.GetClassName(), codeBundle.GenerateSource());
+			context.AddSource(uniqueFileNameConverter.Convert(codeBundle.GetClassName()), codeBundle.GenerateSource());
+
+			foreach (GDScriptClassFile file in gdScriptFolder.GetFiles())
+            {
+				context.AddSource(uniqueFileNameConverter.Convert(file.gdScriptClass.uniqueName), file.GenerateSource(gdScriptFolder, typeConverter));
+			}
 		}
 
 		public void Initialize(GeneratorInitializationContext context)

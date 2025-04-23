@@ -40,13 +40,13 @@ namespace GDScriptBridge.Types
 		public const string ARRAY_PURE = "Array";
 
 		const string ARRAY_GROUP_TYPE = "type";
-		static readonly Regex ARRAY = new Regex(ARRAY_PURE + @"\s*\[\s*(?<" + ARRAY_GROUP_TYPE + @">.+)\s*\]");
+		static readonly Regex ARRAY = new Regex(ARRAY_PURE + @"\s*\[\s*(?<" + ARRAY_GROUP_TYPE + @">[^\s]+)\s*\]");
 
 		public const string DICTIONARY_PURE = "Dictionary";
 
 		const string DICTIONARY_GROUP_KEY = "key";
 		const string DICTIONARY_GROUP_VALUE = "value";
-		static readonly Regex DICTIONARY = new Regex(DICTIONARY_PURE + @"\s*\[\s*(?<" + DICTIONARY_GROUP_KEY + @">.+)\s*(?<"+ DICTIONARY_GROUP_VALUE + @">.+)\s*\]");
+		static readonly Regex DICTIONARY = new Regex(DICTIONARY_PURE + @"\s*\[\s*(?<" + DICTIONARY_GROUP_KEY + @">[^\s]+)\s*(?<" + DICTIONARY_GROUP_VALUE + @">[^\s]+)\s*\]");
 
 		List<ITypeConverter> typeConverters = new List<ITypeConverter>();
 

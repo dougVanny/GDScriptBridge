@@ -31,6 +31,11 @@ namespace GDScriptBridge.Utils
 			return new CodeBlock(sb, "<", ">");
 		}
 
+		public static CodeBlock Comment(StringBuilder sb)
+		{
+			return new CodeBlock(sb, "/* ", " */");
+		}
+
 		public void Dispose()
 		{
 			sb.Append(close);

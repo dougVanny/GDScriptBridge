@@ -9,7 +9,7 @@ namespace GDScriptBridge.Utils
 		Func<string, string> stringConvertion;
 		Dictionary<string, string> map = new Dictionary<string, string>();
 
-		public UniqueSymbolConverter(Func<string, string> stringConvertion)
+		public UniqueSymbolConverter(Func<string, string> stringConvertion = null)
 		{
 			this.stringConvertion = stringConvertion;
 		}
@@ -18,7 +18,9 @@ namespace GDScriptBridge.Utils
 		{
 			if (!map.ContainsKey(input))
 			{
-				string converted = stringConvertion.Invoke(input);
+				string converted = input;
+				
+				if(stringConvertion!=null) converted = stringConvertion.Invoke(converted);
 
 				if (map.ContainsValue(converted))
 				{

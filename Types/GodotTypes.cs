@@ -37,7 +37,12 @@ namespace GDScriptBridge.Types
 						{
 							TypeInfo typeInfo = GenerateTypeInfo(type, godotObject);
 
-							if(typeInfo != null) knownTypes.Add(type.Name.ToLower(), typeInfo);
+							if (typeInfo != null)
+							{
+								typeInfo.cSharpName = $"{GODOT_NAMESPACE}.{typeInfo.cSharpName}";
+
+								knownTypes.Add(type.Name.ToLower(), typeInfo);
+							}
 						}
 					}
 				}
