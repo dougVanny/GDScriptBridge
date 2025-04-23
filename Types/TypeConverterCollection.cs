@@ -58,7 +58,7 @@ namespace GDScriptBridge.Types
 			if (gdScriptType.Equals(DICTIONARY_PURE)) return new TypeInfoDictionary();
 
 			match = ARRAY.Match(gdScriptType);
-			if (match != null)
+			if (match.Success)
 			{
 				TypeInfo type = GetConvertedTypeFromList(match.Groups[ARRAY_GROUP_TYPE].Value);
 
@@ -68,7 +68,7 @@ namespace GDScriptBridge.Types
 			}
 
 			match = DICTIONARY.Match(gdScriptType);
-			if (match != null)
+			if (match.Success)
 			{
 				TypeInfo key = GetConvertedTypeFromList(match.Groups[DICTIONARY_GROUP_KEY].Value);
 				TypeInfo value = GetConvertedTypeFromList(match.Groups[DICTIONARY_GROUP_VALUE].Value);

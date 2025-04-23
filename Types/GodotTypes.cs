@@ -1,9 +1,6 @@
-﻿using GDShrapt.Reader;
-using Microsoft.CodeAnalysis;
-using System;
+﻿using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
-using System.Text;
-using static System.Net.Mime.MediaTypeNames;
+using System.Linq;
 
 namespace GDScriptBridge.Types
 {
@@ -21,22 +18,14 @@ namespace GDScriptBridge.Types
             {
 				foreach (INamespaceSymbol namespaceSymbol in GetAllNamespaces(assemblySymbol.GlobalNamespace))
 				{
-					List<INamedTypeSymbol> namedTypeSymbolList = new List<INamedTypeSymbol>();
-					
-					foreach (INamedTypeSymbol typeMembers in namespaceSymbol.GetTypeMembers())
-                    {
-						namedTypeSymbolList.AddRange(AllNestedTypesAndSelf(typeMembers));
-					}
-
 					if (GODOT_NAMESPACE.Equals(namespaceSymbol.Name))
 					{
 						INamedTypeSymbol godotObject = null;
-
-						foreach (INamedTypeSymbol namedTypeSymbol in namedTypeSymbolList)
+						foreach (INamedTypeSymbol typeMembers in namespaceSymbol.GetTypeMembers())
 						{
-							if (GODOT_OBJECT_NAME.Equals(namedTypeSymbol.Name) && SymbolEqualityComparer.Default.Equals(namespaceSymbol, namedTypeSymbol.ContainingSymbol))
+							if (GODOT_OBJECT_NAME.Equals(typeMembers.Name))
 							{
-								godotObject = namedTypeSymbol;
+								godotObject = typeMembers;
 
 								break;
 							}
@@ -44,61 +33,11 @@ namespace GDScriptBridge.Types
 
 						if (godotObject == null) continue;
 
-						foreach (INamedTypeSymbol namedTypeSymbol in namedTypeSymbolList)
+						foreach (INamedTypeSymbol type in namespaceSymbol.GetTypeMembers())
 						{
-							if (namedTypeSymbol.Name.StartsWith("<"))
-							{
-								continue;
-							}
-							else if (namedTypeSymbol.TypeKind == TypeKind.Class)
-							{
-								if (!isValidClass(namedTypeSymbol, godotObject)) continue;
-							}
-							else if (namedTypeSymbol.TypeKind == TypeKind.Enum || namedTypeSymbol.TypeKind == TypeKind.Struct)
-							{
-								INamedTypeSymbol containingSymbol = namedTypeSymbol.ContainingSymbol as INamedTypeSymbol;
+							TypeInfo typeInfo = GenerateTypeInfo(type, godotObject);
 
-								if (containingSymbol != null && containingSymbol.TypeKind == TypeKind.Class)
-								{
-									if (!isValidClass(containingSymbol, godotObject)) continue;
-								}
-							}
-							else
-							{
-								continue;
-							}
-
-							string fullName = namedTypeSymbol.Name;
-
-							INamedTypeSymbol parentType = namedTypeSymbol.ContainingSymbol as INamedTypeSymbol;
-							while (parentType != null)
-							{
-								fullName = parentType.Name + "." + fullName;
-								parentType = parentType.ContainingSymbol as INamedTypeSymbol;
-							}
-
-							if (namedTypeSymbol.TypeKind == TypeKind.Enum)
-							{
-								TypeInfoEnum typeInfoEnum = new TypeInfoEnum(fullName);
-
-								if (fullName.EndsWith(ENUM_SUFFIX))
-								{
-									typeInfoEnum.gdScriptName = fullName.Substring(0, fullName.Length - ENUM_SUFFIX.Length);
-								}
-
-								foreach(string member in namedTypeSymbol.MemberNames)
-								{
-									if (member[0] == '.') continue;
-
-									typeInfoEnum.options.Add(member);
-								}
-
-								knownTypes.Add(typeInfoEnum.gdScriptName, typeInfoEnum);
-							}
-							else
-							{
-								knownTypes.Add(fullName, new TypeInfo(fullName));
-							}
+							if(typeInfo != null) knownTypes.Add(type.Name.ToLower(), typeInfo);
 						}
 					}
 				}
@@ -118,16 +57,70 @@ namespace GDScriptBridge.Types
 			}
 		}
 
-		static IEnumerable<INamedTypeSymbol> AllNestedTypesAndSelf(INamedTypeSymbol type)
+		static TypeInfo GenerateTypeInfo(INamedTypeSymbol type, INamedTypeSymbol godotObject)
 		{
-			yield return type;
-
-			foreach (var typeMember in type.GetTypeMembers())
+			if (type.Name.StartsWith("<"))
 			{
-				foreach (var nestedType in AllNestedTypesAndSelf(typeMember))
+				return null;
+			}
+			else if (type.TypeKind == TypeKind.Class)
+			{
+				if (!isValidClass(type, godotObject)) return null;
+
+				TypeInfoClass typeInfoClass = new TypeInfoClass(type.Name);
+
+				foreach (var childType in type.GetTypeMembers())
 				{
-					yield return nestedType;
+					TypeInfo childTypeInfo = GenerateTypeInfo(childType, godotObject);
+
+					if (childTypeInfo == null) continue;
+
+					string childBaseName = childTypeInfo.gdScriptName.Split('.')[0];
+
+					childTypeInfo.gdScriptName = typeInfoClass.gdScriptName + "." + childTypeInfo.gdScriptName;
+					childTypeInfo.cSharpName = typeInfoClass.cSharpName + "." + childTypeInfo.cSharpName;
+
+					typeInfoClass.AddSubType(childBaseName.ToLower(), childTypeInfo);
 				}
+
+				return typeInfoClass;
+			}
+			else if (type.TypeKind == TypeKind.Enum || type.TypeKind == TypeKind.Struct)
+			{
+				INamedTypeSymbol containingSymbol = type.ContainingSymbol as INamedTypeSymbol;
+
+				if (containingSymbol != null && containingSymbol.TypeKind == TypeKind.Class)
+				{
+					if (!isValidClass(containingSymbol, godotObject)) return null;
+				}
+
+				if (type.TypeKind == TypeKind.Struct)
+				{
+					return new TypeInfo(type.Name);
+				}
+				else
+				{
+					TypeInfoEnum typeInfoEnum = new TypeInfoEnum(type.Name);
+
+					if (type.Name.EndsWith(ENUM_SUFFIX))
+					{
+						typeInfoEnum.gdScriptName = type.Name.Substring(0, type.Name.Length - ENUM_SUFFIX.Length);
+					}
+
+					foreach (string member in type.MemberNames)
+					{
+						if (member[0] == '.') continue;
+						if (member == "value__") continue;
+
+						typeInfoEnum.options.Add(member);
+					}
+
+					return typeInfoEnum;
+				}
+			}
+			else
+			{
+				return null;
 			}
 		}
 
@@ -145,15 +138,35 @@ namespace GDScriptBridge.Types
 
 		public TypeInfo GetTypeInfo(string gdScriptType)
 		{
-            foreach (string type in knownTypes.Keys)
-            {
-				if (gdScriptType.ToLower().Equals(type.ToLower()))
-				{
-					return knownTypes[type];
-				}
-            }
+			List<string> typeParts = gdScriptType.ToLower().Split('.').ToList();
 
-			return null;
+			if (!knownTypes.ContainsKey(typeParts[0])) return null;
+
+			TypeInfo typeInfo = knownTypes[typeParts[0]];
+			typeParts.RemoveAt(0);
+
+			while (typeParts.Count > 0)
+			{
+				if (typeInfo is TypeInfoClass typeInfoClass)
+				{
+					typeInfo = typeInfoClass.GetSubType(typeParts[0]);
+
+					if (typeInfo != null)
+					{
+						typeParts.RemoveAt(0);
+					}
+					else
+					{
+						return null;
+					}
+				}
+				else
+				{
+					return null;
+				}
+			}
+
+			return typeInfo;
         }
 	}
 }

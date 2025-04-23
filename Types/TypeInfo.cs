@@ -22,6 +22,36 @@ namespace GDScriptBridge.Types
 		}
 	}
 
+	public interface ITypeInfoClass
+	{
+		public TypeInfo GetSubType(string subType);
+	}
+
+	public class TypeInfoClass : TypeInfo, ITypeInfoClass
+	{
+		Dictionary<string,TypeInfo> subTypes = new Dictionary<string, TypeInfo>();
+
+		public TypeInfoClass(string name) : base(name)
+		{
+		}
+
+		public TypeInfoClass(string gdScriptName, string cSharpName) : base(gdScriptName, cSharpName)
+		{
+		}
+
+		public void AddSubType(string subTypeName, TypeInfo subTypeInfo)
+		{
+			subTypes.Add(subTypeName, subTypeInfo);
+		}
+
+		public TypeInfo GetSubType(string subType)
+		{
+			if (!subTypes.ContainsKey(subType)) return null;
+
+			return subTypes[subType];
+		}
+	}
+
 	public class TypeInfoEnum : TypeInfo
 	{
 		public List<string> options = new List<string>();

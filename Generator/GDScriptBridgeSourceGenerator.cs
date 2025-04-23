@@ -29,16 +29,7 @@ namespace GDScriptBridge.Generator
 			typeConverter.Add(new VarTypes());
 			typeConverter.Add(new GodotTypes(context));
 
-			Types.TypeInfo typeInfo = typeConverter.GetTypeInfo("Array[Node.ProcessMode]");
-
-			BaseCodeBundle codeBundle;
-
-			codeBundle = new BaseGDBridgeBundle();
-			context.AddSource(codeBundle.GetClassName(), codeBundle.GenerateSource());
-
-			codeBundle = new GDBridgeWrapperBundle();
-			context.AddSource(codeBundle.GetClassName(), codeBundle.GenerateSource());
-
+			GDScriptFolder gdScriptFolder = new GDScriptFolder();
 			foreach (AdditionalText additionalFile in context.AdditionalFiles)
 			{
 				if (Path.GetExtension(additionalFile.Path) != GD_SCRIPT_EXTENSION) continue;
@@ -48,13 +39,29 @@ namespace GDScriptBridge.Generator
 
 				Uri fileUri = new Uri(Uri.UnescapeDataString(additionalFile.Path), UriKind.Absolute);
 
-				GDScriptClass gdClass = new GDScriptClass(godotRootUri.MakeRelativeUri(fileUri).ToString(), sourceText.ToString());
-
-				if (gdClass.isValid)
-				{
-					context.AddSource(gdClass.className, gdClass.GenerateSource());
-				}
+				GDScriptClassFile gdClassFile = new GDScriptClassFile(godotRootUri.MakeRelativeUri(fileUri).ToString(), sourceText.ToString());
+				gdScriptFolder.AddFile(gdClassFile);
 			}
+			typeConverter.Add(gdScriptFolder);
+
+			Types.TypeInfo ti;
+			ti = typeConverter.GetTypeInfo("TestSourceGen.UltimateTest");
+			ti = typeConverter.GetTypeInfo("TestSourceGen.State");
+			ti = typeConverter.GetTypeInfo("TestSourceGen.A");
+			ti = typeConverter.GetTypeInfo("NamedClass");
+			ti = typeConverter.GetTypeInfo("NamedClass.LoadedScript");
+			ti = typeConverter.GetTypeInfo("InCls");
+			ti = typeConverter.GetTypeInfo("InCls.InnerClass");
+			ti = typeConverter.GetTypeInfo("InCls.InnerClass.InnerTwo");
+			ti = typeConverter.GetTypeInfo("InCls.InnerClass.InnerTwo.Lala");
+
+			BaseCodeBundle codeBundle;
+
+			codeBundle = new BaseGDBridgeBundle();
+			context.AddSource(codeBundle.GetClassName(), codeBundle.GenerateSource());
+
+			codeBundle = new GDBridgeWrapperBundle();
+			context.AddSource(codeBundle.GetClassName(), codeBundle.GenerateSource());
 		}
 
 		public void Initialize(GeneratorInitializationContext context)

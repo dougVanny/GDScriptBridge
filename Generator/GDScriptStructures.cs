@@ -1,63 +1,74 @@
-﻿using GDShrapt.Reader;
+﻿using GDScriptBridge.Utils;
+using GDShrapt.Reader;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace GDScriptBridge.Generator
 {
-	public class GDScriptEnum
+	public class GDScriptBase
 	{
 		public string name;
-		public List<GDScriptEnumValue> values = new List<GDScriptEnumValue>();
+		public string uniqueName;
 
-		public GDScriptEnum(GDEnumDeclaration enumDeclaration)
+		public GDScriptBase(string name, UniqueSymbolConverter uniqueSymbolConverter)
 		{
-			name = enumDeclaration.Identifier.ToString();
+			this.name = name;
 
+			if (uniqueSymbolConverter != null) uniqueName = uniqueSymbolConverter.Convert(name);
+		}
+
+		public GDScriptBase(string name, string uniqueName, UniqueSymbolConverter uniqueSymbolConverter)
+		{
+			this.name = name;
+			this.uniqueName = uniqueName;
+
+			if (uniqueSymbolConverter != null) this.uniqueName = uniqueSymbolConverter.Convert(uniqueName);
+		}
+	}
+
+	public class GDScriptEnum : GDScriptBase
+	{
+		public class Option
+		{
+			public string name;
+			public string declaredValueExpression;
+
+			public Option(GDEnumValueDeclaration enumValueDeclaration)
+			{
+				name = enumValueDeclaration.Identifier.ToString();
+
+				if (enumValueDeclaration.Value != null) declaredValueExpression = enumValueDeclaration.Value.ToString();
+			}
+		}
+
+		public List<Option> options = new List<Option>();
+
+		public GDScriptEnum(GDEnumDeclaration enumDeclaration, UniqueSymbolConverter uniqueSymbolConverter) : base(enumDeclaration.Identifier.ToString(), enumDeclaration.Identifier.ToString()+"Enum", uniqueSymbolConverter)
+		{
 			foreach (GDEnumValueDeclaration enumValueDeclaration in enumDeclaration.Values)
 			{
-				values.Add(new GDScriptEnumValue(enumValueDeclaration));
+				options.Add(new Option(enumValueDeclaration));
 			}
 		}
 	}
 
-	public class GDScriptEnumValue
+	public class GDScriptField : GDScriptBase
 	{
-		public string name;
-		public string declaredValueExpression;
-
-		public GDScriptEnumValue(GDEnumValueDeclaration enumValueDeclaration)
-		{
-			name = enumValueDeclaration.Identifier.ToString();
-
-			if (enumValueDeclaration.Value != null) declaredValueExpression = enumValueDeclaration.Value.ToString();
-		}
-	}
-
-	public class GDScriptField
-	{
-		public string name;
 		public string type;
 
-		public GDScriptField(GDVariableDeclaration variableDeclaration)
+		public GDScriptField(GDVariableDeclaration variableDeclaration, UniqueSymbolConverter uniqueSymbolConverter) : base(variableDeclaration.Identifier.ToString(), uniqueSymbolConverter)
 		{
-			name = variableDeclaration.Identifier.ToString();
 			type = variableDeclaration.Type == null ? null : variableDeclaration.Type.ToString();
-		}
-
-		public GDScriptField(GDParameterDeclaration parameterDeclaration)
-		{
-			name = parameterDeclaration.Identifier.ToString();
-			type = parameterDeclaration.Type == null ? null : parameterDeclaration.Type.ToString();
 		}
 	}
 
-	public class GDScriptInnerType : GDScriptField
+	public class GDScriptTypeReference : GDScriptField
 	{
 		public string preload = null;
 		public List<string> memberPath = null;
 
-		public GDScriptInnerType(GDVariableDeclaration variableDeclaration) : base(variableDeclaration)
+		public GDScriptTypeReference(GDVariableDeclaration variableDeclaration, UniqueSymbolConverter uniqueSymbolConverter) : base(variableDeclaration, uniqueSymbolConverter)
 		{
 			GDExpression expression = variableDeclaration.Initializer;
 
@@ -103,53 +114,60 @@ namespace GDScriptBridge.Generator
 		}
 	}
 
-	public class GDScriptSignal
+	public class GDScriptSignal : GDScriptBase
 	{
-		public string name;
-		public List<GDScriptField> parameters = new List<GDScriptField>();
-
-		public GDScriptSignal(GDSignalDeclaration signalDeclaration)
+		public class Param
 		{
-			name = signalDeclaration.Identifier.ToString();
+			public string name;
+			public string type;
 
+			public Param(GDParameterDeclaration parameterDeclaration)
+			{
+				name = parameterDeclaration.Identifier.ToString();
+				type = parameterDeclaration.Type == null ? null : parameterDeclaration.Type.ToString();
+			}
+		}
+
+		public List<Param> parameters = new List<Param>();
+
+		public GDScriptSignal(GDSignalDeclaration signalDeclaration, UniqueSymbolConverter uniqueSymbolConverter) : base(signalDeclaration.Identifier.ToString(), uniqueSymbolConverter)
+		{
 			foreach (GDParameterDeclaration parameterDeclaration in signalDeclaration.Parameters)
 			{
-				parameters.Add(new GDScriptField(parameterDeclaration));
+				parameters.Add(new Param(parameterDeclaration));
 			}
 		}
 	}
 
-	public class GDScriptMethod
+	public class GDScriptMethod : GDScriptBase
 	{
-		public string name;
-		public string returnType;
-		public List<GDScriptMethodParam> methodParams = new List<GDScriptMethodParam>();
-
-		public GDScriptMethod(GDMethodDeclaration methodDeclaration)
+		public class Param
 		{
-			name = methodDeclaration.Identifier.ToString();
+			public string name;
+			public string type;
+
+			public string defaultValueExpression;
+
+			public Param(GDParameterDeclaration parameterDeclaration)
+			{
+				name = parameterDeclaration.Identifier.ToString();
+				type = parameterDeclaration.Type == null ? null : parameterDeclaration.Type.ToString();
+
+				if (parameterDeclaration.DefaultValue != null) defaultValueExpression = parameterDeclaration.DefaultValue.ToString();
+			}
+		}
+
+		public string returnType;
+		public List<Param> methodParams = new List<Param>();
+
+		public GDScriptMethod(GDMethodDeclaration methodDeclaration, UniqueSymbolConverter uniqueSymbolConverter) : base(methodDeclaration.Identifier.ToString(), uniqueSymbolConverter)
+		{
 			returnType = methodDeclaration.ReturnType == null ? null : methodDeclaration.ReturnType.ToString();
 
 			foreach (GDParameterDeclaration parameterDeclaration in methodDeclaration.Parameters)
 			{
-				methodParams.Add(new GDScriptMethodParam(parameterDeclaration));
+				methodParams.Add(new Param(parameterDeclaration));
 			}
-		}
-	}
-
-	public class GDScriptMethodParam
-	{
-		public string name;
-		public string type;
-
-		public string defaultValueExpression;
-
-		public GDScriptMethodParam(GDParameterDeclaration parameterDeclaration)
-		{
-			name = parameterDeclaration.Identifier.ToString();
-			type = parameterDeclaration.Type == null ? null : parameterDeclaration.Type.ToString();
-
-			if (parameterDeclaration.DefaultValue != null) defaultValueExpression = parameterDeclaration.DefaultValue.ToString();
 		}
 	}
 }

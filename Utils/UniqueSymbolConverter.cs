@@ -34,5 +34,20 @@ namespace GDScriptBridge.Utils
 
 			return map[input];
 		}
+
+		public static string ToTitleCase(string name)
+		{
+			string[] nameParts = name.Split('_');
+
+			for (int i = 0; i < nameParts.Length; i++)
+			{
+				if (nameParts[i].Length == 0) continue;
+				nameParts[i] = char.ToUpper(nameParts[i][0]) + nameParts[i].Substring(1);
+			}
+
+			string newName = string.Join("", nameParts);
+			if (name[0] == '_') newName = "_" + newName;
+			return newName;
+		}
 	}
 }
