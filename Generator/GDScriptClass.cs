@@ -428,7 +428,7 @@ namespace GDScriptBridge.Generator
 
 		public override string CastToVariant(string symbol)
 		{
-			return $"{symbol}.godotObject";
+			return $"Variant.From({symbol}.godotObject)";
 		}
 
 		static readonly char[] DOT = new char[] { '.' };
