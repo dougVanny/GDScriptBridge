@@ -56,10 +56,12 @@ namespace GDScriptBridge.Generator
 	public class GDScriptField : GDScriptBase
 	{
 		public string type;
+		public bool isConst;
 
 		public GDScriptField(GDVariableDeclaration variableDeclaration, UniqueSymbolConverter uniqueSymbolConverter) : base(variableDeclaration.Identifier.ToString(), uniqueSymbolConverter)
 		{
 			type = variableDeclaration.Type == null ? null : variableDeclaration.Type.ToString();
+			isConst = variableDeclaration.IsConstant;
 		}
 	}
 

@@ -64,8 +64,10 @@ namespace GDScriptBridge.Generator
 
 			sb.Append("using Godot;");
 			sb.Append("using System;");
+			sb.Append("using System.Linq;");
 			sb.Append("using System.Reflection;");
 			sb.Append("using System.Collections.Generic;");
+			sb.Append("using GDScriptBridge.Bundled;");
 
 			sb.Append($"namespace {GetNamespace()}");
 			using (CodeBlock.Brackets(sb))

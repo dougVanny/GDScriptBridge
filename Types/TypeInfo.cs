@@ -8,6 +8,7 @@ namespace GDScriptBridge.Types
 	{
 		public string gdScriptName;
 		public string cSharpName;
+		public bool isVariantCompatible = true;
 
 		public TypeInfo(string name)
 		{
@@ -19,6 +20,28 @@ namespace GDScriptBridge.Types
 		{
 			this.gdScriptName = gdScriptName;
 			this.cSharpName = cSharpName;
+		}
+
+		public virtual string CastFromVariant(string variantSymbol)
+		{
+			return $"({cSharpName}){variantSymbol}";
+		}
+
+		public virtual string CastToVariant(string symbol)
+		{
+			return $"{symbol}";
+		}
+	}
+
+	public class TypeInfoVariant : TypeInfo
+	{
+		public TypeInfoVariant() : base("Godot.Variant")
+		{
+		}
+
+		public override string CastFromVariant(string variantSymbol)
+		{
+			return $"{variantSymbol}";
 		}
 	}
 
@@ -58,10 +81,22 @@ namespace GDScriptBridge.Types
 
 		public TypeInfoEnum(string name) : base(name)
 		{
+			isVariantCompatible = false;
 		}
 
 		public TypeInfoEnum(string gdScriptName, string cSharpName) : base(gdScriptName, cSharpName)
 		{
+			isVariantCompatible = false;
+		}
+
+		public override string CastFromVariant(string variantSymbol)
+		{
+			return $"({cSharpName})({variantSymbol}.AsInt32())";
+		}
+
+		public override string CastToVariant(string symbol)
+		{
+			return $"Variant.CreateFrom((int){symbol})";
 		}
 	}
 }

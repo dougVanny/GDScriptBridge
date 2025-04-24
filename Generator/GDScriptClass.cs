@@ -11,7 +11,7 @@ namespace GDScriptBridge.Generator
 {
 	public class GDScriptClass : GDScriptBase
 	{
-		static readonly TypeInfo TYPEINFO_VARIANT = new TypeInfo("Godot.Variant");
+		static readonly TypeInfo TYPEINFO_VARIANT = new TypeInfoVariant();
 
 		public string extends;
 		public string fullCSharpName;
@@ -114,7 +114,7 @@ namespace GDScriptBridge.Generator
 
 			FindType("Array [ bool ]", folder, globalTypeConverter);
 
-			sb.Append($"class {uniqueName} : GDScriptBridge.Bundled.BaseGDBridge");
+			sb.Append($"public class {uniqueName} : GDScriptBridge.Bundled.BaseGDBridge");
 			using (CodeBlock.Brackets(sb))
 			{
 				foreach (GDScriptClass innerClass in innerClasses)
@@ -171,17 +171,13 @@ namespace GDScriptBridge.Generator
 					sb.Append($"public {typeInfo.cSharpName} {variable.uniqueName}");
 					using (CodeBlock.Brackets(sb))
 					{
-						string getCast = typeInfo == TYPEINFO_VARIANT ? "" : $"({typeInfo.cSharpName})";
+						string getter = typeInfo.CastFromVariant($"godotObject.Get(\"{variable.name}\")");
+						sb.Append($"get => {getter};");
 
-						if (typeInfo is TypeInfoEnum)
+						if (!variable.isConst)
 						{
-							sb.Append($"get => {getCast}godotObject.Get(\"{variable.name}\").AsInt32();");
-							sb.Append($"set => godotObject.Set(\"{variable.name}\", (int)value);");
-						}
-						else
-						{
-							sb.Append($"get => {getCast}godotObject.Get(\"{variable.name}\");");
-							sb.Append($"set => godotObject.Set(\"{variable.name}\", value);");
+							string setter = typeInfo.CastToVariant("value");
+							sb.Append($"set => godotObject.Set(\"{variable.name}\", {setter});");
 						}
 					}
 				}
@@ -199,9 +195,10 @@ namespace GDScriptBridge.Generator
 							{
 								if (comma) angleBracketBuilder.Append(",");
 
-								TypeInfo typeInfo = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
-
-								angleBracketBuilder.Append(typeInfo.cSharpName);
+								//TypeInfo typeInfo = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
+								//angleBracketBuilder.Append(typeInfo.cSharpName);
+								
+								angleBracketBuilder.Append("Variant");
 
 								comma = true;
 							}
@@ -234,7 +231,47 @@ namespace GDScriptBridge.Generator
 							sb.Append("add");
 							using (CodeBlock.Brackets(sb))
 							{
-								sb.Append($"if (!{signal.uniqueName}Callables.ContainsKey(value)) {signal.uniqueName}Callables.Add(value, Callable.From{angleBracket}(new Action{angleBracket}(value)));");
+								sb.Append($"if (!{signal.uniqueName}Callables.ContainsKey(value))");
+								using (CodeBlock.Brackets(sb))
+								{
+									sb.Append("void VariantCasting");
+									using (CodeBlock.Parenthesis(sb))
+									{
+										bool comma = false;
+
+										foreach (GDScriptSignal.Param parameter in signal.parameters)
+										{
+											if (comma) sb.Append(",");
+
+											sb.Append($"Variant {parameter.name}");
+
+											comma = true;
+										}
+									}
+									using (CodeBlock.Brackets(sb))
+									{
+										sb.Append("value.Invoke");
+										using (CodeBlock.Parenthesis(sb))
+										{
+											bool comma = false;
+
+											foreach (GDScriptSignal.Param parameter in signal.parameters)
+											{
+												if (comma) sb.Append(",");
+
+												TypeInfo parameterType = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
+
+												sb.Append(parameterType.CastFromVariant(parameter.name));
+
+												comma = true;
+											}
+										}
+										sb.Append(";");
+									}
+
+									sb.Append($"{signal.uniqueName}Callables.Add(value, Callable.From{angleBracket}(new Action{angleBracket}(VariantCasting)));");
+								}
+
 								sb.Append($"godotObject.Connect(\"{signal.name}\", {signal.uniqueName}Callables[value]);");
 							}
 
@@ -339,9 +376,7 @@ namespace GDScriptBridge.Generator
 
 						if (returnTypeInfo.cSharpName != "void")
 						{
-							sb.Append("return ");
-							if (returnTypeInfo != TYPEINFO_VARIANT) sb.Append($"({returnTypeInfo.cSharpName})");
-							sb.Append(" ret;");
+							sb.Append("return " + returnTypeInfo.CastFromVariant("ret") + ";");
 						}
 					}
 				}
@@ -354,7 +389,6 @@ namespace GDScriptBridge.Generator
 		{
 			return new TypeInfoGDScriptClass(this, folder);
 		}
-
 
 		TypeInfo FindType(string type, GDScriptFolder folder, TypeConverterCollection globalTypeConverter)
 		{
@@ -383,6 +417,18 @@ namespace GDScriptBridge.Generator
 		{
 			this.gdClass = gdClass;
 			this.folder = folder;
+
+			isVariantCompatible = false;
+		}
+
+		public override string CastFromVariant(string variantSymbol)
+		{
+			return $"({variantSymbol}).AsGodotObject().AsGDBridge<{cSharpName}>()";
+		}
+
+		public override string CastToVariant(string symbol)
+		{
+			return $"{symbol}.godotObject";
 		}
 
 		static readonly char[] DOT = new char[] { '.' };
