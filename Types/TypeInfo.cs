@@ -1,5 +1,7 @@
-﻿using System;
+﻿using GDScriptBridge.Utils;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace GDScriptBridge.Types
@@ -50,34 +52,20 @@ namespace GDScriptBridge.Types
 		public TypeInfo GetSubType(string subType);
 	}
 
-	public class TypeInfoClass : TypeInfo, ITypeInfoClass
-	{
-		Dictionary<string,TypeInfo> subTypes = new Dictionary<string, TypeInfo>();
-
-		public TypeInfoClass(string name) : base(name)
-		{
-		}
-
-		public TypeInfoClass(string gdScriptName, string cSharpName) : base(gdScriptName, cSharpName)
-		{
-		}
-
-		public void AddSubType(string subTypeName, TypeInfo subTypeInfo)
-		{
-			subTypes.Add(subTypeName, subTypeInfo);
-		}
-
-		public TypeInfo GetSubType(string subType)
-		{
-			if (!subTypes.ContainsKey(subType)) return null;
-
-			return subTypes[subType];
-		}
-	}
-
 	public class TypeInfoEnum : TypeInfo
 	{
-		public List<string> options = new List<string>();
+		public class OptionInfo
+		{
+			public string name;
+			public string cSharpName;
+			public OperationEvaluation value;
+		}
+
+		UniqueSymbolConverter uniqueOptionSymbolConverter;
+
+		List<string> orderedOptions = new List<string>();
+		Dictionary<string, OptionInfo> optionInfo = new Dictionary<string, OptionInfo>();
+
 
 		public TypeInfoEnum(string name) : base(name)
 		{
@@ -87,6 +75,57 @@ namespace GDScriptBridge.Types
 		public TypeInfoEnum(string gdScriptName, string cSharpName) : base(gdScriptName, cSharpName)
 		{
 			isVariantCompatible = false;
+		}
+
+		public void SetUniqueOptionSymbolConverter(UniqueSymbolConverter uniqueOptionSymbolConverter)
+		{
+			this.uniqueOptionSymbolConverter = uniqueOptionSymbolConverter;
+		}
+
+		public void AddOption(string optionName, string optionCSharpName = null)
+		{
+			orderedOptions.Add(optionName);
+
+			if (optionCSharpName == null) optionCSharpName = uniqueOptionSymbolConverter == null ? optionName : uniqueOptionSymbolConverter.Convert(optionName);
+
+			optionInfo[optionName] = new OptionInfo
+			{
+				name = optionName,
+				cSharpName = optionCSharpName
+			};
+		}
+
+		public void SetOptionValue(string optionName, OperationEvaluation optionValue)
+		{
+			optionInfo[optionName].value = optionValue;
+		}
+
+		public bool IsValidEnum
+		{
+			get
+			{
+				return optionInfo.Values.All(option => option.value == null || option.value.type == OperationEvaluation.Type.Long);
+			}
+		}
+
+		public IEnumerable<(OptionInfo optionInfo, long optionValue)> Options
+		{
+			get
+			{
+				long value = 0;
+
+                foreach (string optionName in orderedOptions)
+                {
+					if (optionInfo[optionName].value != null)
+					{
+						value = optionInfo[optionName].value.longValue;
+					}
+
+					yield return (optionInfo[optionName], value);
+
+					value++;
+				}
+			}
 		}
 
 		public override string CastFromVariant(string variantSymbol)

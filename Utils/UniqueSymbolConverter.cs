@@ -44,7 +44,20 @@ namespace GDScriptBridge.Utils
 			for (int i = 0; i < nameParts.Length; i++)
 			{
 				if (nameParts[i].Length == 0) continue;
-				nameParts[i] = char.ToUpper(nameParts[i][0]) + nameParts[i].Substring(1);
+				if (nameParts[i].Length == 1)
+				{
+					nameParts[i] = nameParts[i].ToUpper();
+					continue;
+				}
+
+				if (nameParts[i].ToUpper().Equals(nameParts[i]))
+				{
+					nameParts[i] = nameParts[i][0] + nameParts[i].Substring(1).ToLower();
+				}
+				else
+				{
+					nameParts[i] = char.ToUpper(nameParts[i][0]) + nameParts[i].Substring(1);
+				}
 			}
 
 			string newName = string.Join("", nameParts);

@@ -20,15 +20,15 @@ namespace GDScriptBridge.Generator
 
 		public void Execute(GeneratorExecutionContext context)
 		{
-			Debugger.Launch();
+			//Debugger.Launch();
 
 			string godotRoot;
 			context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.godotprojectdir", out godotRoot);
 			Uri godotRootUri = new Uri(Uri.UnescapeDataString(godotRoot), UriKind.Absolute);
 
-			TypeConverterCollection typeConverter = new TypeConverterCollection();
-			typeConverter.Add(new VarTypes());
-			typeConverter.Add(new GodotTypes(context));
+			TypeConverterCollection globalContext = new TypeConverterCollection();
+			globalContext.Add(new VarTypes());
+			globalContext.Add(new GodotTypes(context));
 
 			GDScriptFolder gdScriptFolder = new GDScriptFolder();
 			foreach (AdditionalText additionalFile in context.AdditionalFiles)
@@ -42,8 +42,14 @@ namespace GDScriptBridge.Generator
 
 				GDScriptClassFile gdClassFile = new GDScriptClassFile(godotRootUri.MakeRelativeUri(fileUri).ToString(), sourceText.ToString());
 				gdScriptFolder.AddFile(gdClassFile);
+				gdClassFile.SetContext(gdScriptFolder, globalContext);
 			}
-			typeConverter.Add(gdScriptFolder);
+			globalContext.Add(gdScriptFolder);
+
+			foreach (GDScriptClassFile file in gdScriptFolder.GetFiles())
+			{
+				file.EvaluateExpressions();
+			}
 
 			UniqueSymbolConverter uniqueFileNameConverter = new UniqueSymbolConverter();
 
@@ -57,7 +63,7 @@ namespace GDScriptBridge.Generator
 
 			foreach (GDScriptClassFile file in gdScriptFolder.GetFiles())
             {
-				context.AddSource(uniqueFileNameConverter.Convert(file.gdScriptClass.uniqueName), file.GenerateSource(gdScriptFolder, typeConverter));
+				context.AddSource(uniqueFileNameConverter.Convert(file.gdScriptClass.uniqueName), file.GenerateSource());
 			}
 		}
 

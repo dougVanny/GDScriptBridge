@@ -1,4 +1,5 @@
-﻿using GDScriptBridge.Utils;
+﻿using GDScriptBridge.Types;
+using GDScriptBridge.Utils;
 using GDShrapt.Reader;
 using System;
 using System.Collections.Generic;
@@ -32,13 +33,17 @@ namespace GDScriptBridge.Generator
 		public class Option
 		{
 			public string name;
-			public string declaredValueExpression;
+
+			public ExpressionEvaluator declaredValue;
 
 			public Option(GDEnumValueDeclaration enumValueDeclaration)
 			{
 				name = enumValueDeclaration.Identifier.ToString();
 
-				if (enumValueDeclaration.Value != null) declaredValueExpression = enumValueDeclaration.Value.ToString();
+				if (enumValueDeclaration.Value != null)
+				{
+					declaredValue = new ExpressionEvaluator(enumValueDeclaration.Value);
+				}
 			}
 		}
 
@@ -50,6 +55,24 @@ namespace GDScriptBridge.Generator
 			{
 				options.Add(new Option(enumValueDeclaration));
 			}
+		}
+
+		public TypeInfoEnum GetAsTypeInfo(GDScriptClass gdClass)
+		{
+			TypeInfoEnum typeInfoEnum = new TypeInfoEnum(name, $"{gdClass.GetAsTypeInfo().cSharpName}.{uniqueName}");
+			typeInfoEnum.SetUniqueOptionSymbolConverter(new UniqueSymbolConverter(UniqueSymbolConverter.ToTitleCase));
+
+			foreach (Option enumOption in options)
+			{
+				typeInfoEnum.AddOption(enumOption.name);
+				
+				if (enumOption.declaredValue != null)
+				{
+					typeInfoEnum.SetOptionValue(enumOption.name, enumOption.declaredValue.Evaluate(gdClass));
+				}
+			}
+
+			return typeInfoEnum;
 		}
 	}
 
@@ -148,14 +171,17 @@ namespace GDScriptBridge.Generator
 			public string name;
 			public string type;
 
-			public string defaultValueExpression;
+			public ExpressionEvaluator defaultValue;
 
 			public Param(GDParameterDeclaration parameterDeclaration)
 			{
 				name = parameterDeclaration.Identifier.ToString();
 				type = parameterDeclaration.Type == null ? null : parameterDeclaration.Type.ToString();
 
-				if (parameterDeclaration.DefaultValue != null) defaultValueExpression = parameterDeclaration.DefaultValue.ToString();
+				if (parameterDeclaration.DefaultValue != null)
+				{
+					defaultValue = new ExpressionEvaluator(parameterDeclaration.DefaultValue);
+				}
 			}
 		}
 

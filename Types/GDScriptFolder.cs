@@ -67,7 +67,7 @@ namespace GDScriptBridge.Types
 			GDScriptClassFile classFile = classes[parts[0]];
 			parts.RemoveAt(0);
 
-			TypeInfoGDScriptClass typeInfoGDClass = classFile.gdScriptClass.GetAsTypeInfo(this);
+			TypeInfoGDScriptClass typeInfoGDClass = classFile.gdScriptClass.GetAsTypeInfo();
 
 			return typeInfoGDClass.GetSubType(string.Join(".", parts));
 		}

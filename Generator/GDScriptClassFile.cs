@@ -21,6 +21,9 @@ namespace GDScriptBridge.Generator
 		public string godotScriptPath;
 		public GDClassDeclaration classDeclaration;
 		public GDScriptClass gdScriptClass;
+		
+		public GDScriptFolder folder;
+		public TypeConverterCollection globalContext;
 
 		public List<GDScriptEnum> enums = new List<GDScriptEnum>();
 		public List<GDScriptField> variables = new List<GDScriptField>();
@@ -36,7 +39,17 @@ namespace GDScriptBridge.Generator
 			godotScriptPath = GODOT_RES_DRIVE + filePath.Replace('\\', '/');
 			classDeclaration = new GDScriptReader().ParseFileContent(fileContent);
 			gdScriptClass = new GDScriptClass(this, classDeclaration);
+		}
 
+		public void SetContext(GDScriptFolder folder, TypeConverterCollection globalContext)
+		{
+			this.folder = folder;
+			this.globalContext = globalContext;
+		}
+
+		public void EvaluateExpressions()
+		{
+			gdScriptClass.EvaluateExpressions();
 		}
 
 		public string GetNamespace()
@@ -53,12 +66,12 @@ namespace GDScriptBridge.Generator
 			}
 		}
 
-		public SourceText GenerateSource(GDScriptFolder folder, TypeConverterCollection globalTypeConverter)
+		public SourceText GenerateSource()
 		{
-			return CSharpSyntaxTree.ParseText(SourceText.From(Generate(folder, globalTypeConverter), Encoding.UTF8)).GetRoot().NormalizeWhitespace().SyntaxTree.GetText();
+			return CSharpSyntaxTree.ParseText(SourceText.From(Generate(), Encoding.UTF8)).GetRoot().NormalizeWhitespace().SyntaxTree.GetText();
 		}
 
-		string Generate(GDScriptFolder folder, TypeConverterCollection globalTypeConverter)
+		string Generate()
 		{
 			StringBuilder sb = new StringBuilder();
 
@@ -73,7 +86,7 @@ namespace GDScriptBridge.Generator
 			using (CodeBlock.Brackets(sb))
 			{
 				sb.Append($"[GDScriptBridge.Bundled.ScriptPathAttribute(\"{godotScriptPath}\")]");
-				gdScriptClass.Generate(folder, globalTypeConverter, sb);
+				gdScriptClass.Generate(sb);
 			}
 
 			return sb.ToString();

@@ -72,7 +72,7 @@ namespace GDScriptBridge.Types
 			{
 				if (!isValidClass(type, godotObject)) return null;
 
-				TypeInfoClass typeInfoClass = new TypeInfoClass(type.Name);
+				TypeInfoGodotClass typeInfoClass = new TypeInfoGodotClass(type.Name);
 
 				foreach (var childType in type.GetTypeMembers())
 				{
@@ -117,7 +117,7 @@ namespace GDScriptBridge.Types
 						if (member[0] == '.') continue;
 						if (member == "value__") continue;
 
-						typeInfoEnum.options.Add(member);
+						typeInfoEnum.AddOption(member, member);
 					}
 
 					return typeInfoEnum;
@@ -152,7 +152,7 @@ namespace GDScriptBridge.Types
 
 			while (typeParts.Count > 0)
 			{
-				if (typeInfo is TypeInfoClass typeInfoClass)
+				if (typeInfo is TypeInfoGodotClass typeInfoClass)
 				{
 					typeInfo = typeInfoClass.GetSubType(typeParts[0]);
 
@@ -173,5 +173,30 @@ namespace GDScriptBridge.Types
 
 			return typeInfo;
         }
+	}
+
+	public class TypeInfoGodotClass : TypeInfo, ITypeInfoClass
+	{
+		Dictionary<string, TypeInfo> subTypes = new Dictionary<string, TypeInfo>();
+
+		public TypeInfoGodotClass(string name) : base(name)
+		{
+		}
+
+		public TypeInfoGodotClass(string gdScriptName, string cSharpName) : base(gdScriptName, cSharpName)
+		{
+		}
+
+		public void AddSubType(string subTypeName, TypeInfo subTypeInfo)
+		{
+			subTypes.Add(subTypeName, subTypeInfo);
+		}
+
+		public TypeInfo GetSubType(string subType)
+		{
+			if (!subTypes.ContainsKey(subType)) return null;
+
+			return subTypes[subType];
+		}
 	}
 }

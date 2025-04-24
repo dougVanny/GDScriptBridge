@@ -59,65 +59,65 @@ namespace GDScriptBridge.Types
 			}
 		}
 
-		public class TypeInfoDictionary : TypeInfo
+	public class TypeInfoDictionary : TypeInfo
+	{
+		public TypeInfo dictTypeKey;
+		public TypeInfo dictTypeValue;
+
+		public TypeInfoDictionary() : base(TypeConverterCollection.DICTIONARY_PURE, "Godot.Collections.Dictionary")
 		{
-			public TypeInfo dictTypeKey;
-			public TypeInfo dictTypeValue;
+		}
 
-			public TypeInfoDictionary() : base(TypeConverterCollection.DICTIONARY_PURE, "Godot.Collections.Dictionary")
+		public TypeInfoDictionary(TypeInfo arrayTypeKey, TypeInfo arrayTypeValue) : base(
+			$"{TypeConverterCollection.DICTIONARY_PURE}[{arrayTypeKey.gdScriptName},{arrayTypeValue.gdScriptName}]",
+			(arrayTypeKey.isVariantCompatible && arrayTypeValue.isVariantCompatible) ? $"Godot.Collections.Dictionary<{arrayTypeKey.cSharpName},{arrayTypeValue.cSharpName}>" : $"System.Collections.Generic.Dictionary<{arrayTypeKey.cSharpName},{arrayTypeValue.cSharpName}>"
+			)
+		{
+			this.dictTypeKey = arrayTypeKey;
+			this.dictTypeValue = arrayTypeValue;
+
+			isVariantCompatible = arrayTypeKey.isVariantCompatible && arrayTypeValue.isVariantCompatible;
+		}
+
+
+
+		public override string CastFromVariant(string variantSymbol)
+		{
+			if (isVariantCompatible) return base.CastFromVariant(variantSymbol);
+
+			StringBuilder sb = new StringBuilder();
+
+			sb.Append($"{variantSymbol}.AsGodotDictionary().ToDictionary");
+			using (CodeBlock.Parenthesis(sb))
 			{
+				sb.Append($"__kv => {dictTypeKey.CastFromVariant("__kv.Key")}");
+				sb.Append(",");
+				sb.Append($"__kv => {dictTypeKey.CastFromVariant("__kv.Value")}");
 			}
 
-			public TypeInfoDictionary(TypeInfo arrayTypeKey, TypeInfo arrayTypeValue) : base(
-				$"{TypeConverterCollection.DICTIONARY_PURE}[{arrayTypeKey.gdScriptName},{arrayTypeValue.gdScriptName}]",
-				(arrayTypeKey.isVariantCompatible && arrayTypeValue.isVariantCompatible) ? $"Godot.Collections.Dictionary<{arrayTypeKey.cSharpName},{arrayTypeValue.cSharpName}>" : $"System.Collections.Generic.Dictionary<{arrayTypeKey.cSharpName},{arrayTypeValue.cSharpName}>"
-				)
+			return sb.ToString();
+		}
+
+		public override string CastToVariant(string symbol)
+		{
+			if (isVariantCompatible) return base.CastToVariant(symbol);
+
+			StringBuilder sb = new StringBuilder();
+
+			sb.Append("new Godot.Collections.Dictionary<Variant,Variant>");
+			using (CodeBlock.Parenthesis(sb))
 			{
-				this.dictTypeKey = arrayTypeKey;
-				this.dictTypeValue = arrayTypeValue;
-
-				isVariantCompatible = arrayTypeKey.isVariantCompatible && arrayTypeValue.isVariantCompatible;
-			}
-
-
-
-			public override string CastFromVariant(string variantSymbol)
-			{
-				if (isVariantCompatible) return base.CastFromVariant(variantSymbol);
-
-				StringBuilder sb = new StringBuilder();
-
-				sb.Append($"{variantSymbol}.AsGodotDictionary().ToDictionary");
+				sb.Append($"{symbol}.ToDictionary");
 				using (CodeBlock.Parenthesis(sb))
 				{
-					sb.Append($"__kv => {dictTypeKey.CastFromVariant("__kv.Key")}");
+					sb.Append($"__kv => {dictTypeKey.CastToVariant("__kv.Key")}");
 					sb.Append(",");
-					sb.Append($"__kv => {dictTypeKey.CastFromVariant("__kv.Value")}");
+					sb.Append($"__kv => {dictTypeKey.CastToVariant("__kv.Value")}");
 				}
-
-				return sb.ToString();
 			}
 
-			public override string CastToVariant(string symbol)
-			{
-				if (isVariantCompatible) return base.CastToVariant(symbol);
-
-				StringBuilder sb = new StringBuilder();
-
-				sb.Append("new Godot.Collections.Dictionary<Variant,Variant>");
-				using (CodeBlock.Parenthesis(sb))
-				{
-					sb.Append($"{symbol}.ToDictionary");
-					using (CodeBlock.Parenthesis(sb))
-					{
-						sb.Append($"__kv => {dictTypeKey.CastToVariant("__kv.Key")}");
-						sb.Append(",");
-						sb.Append($"__kv => {dictTypeKey.CastToVariant("__kv.Value")}");
-					}
-				}
-
-				return sb.ToString();
-			}
+			return sb.ToString();
+		}
 	}
 
 	public class TypeConverterCollection : ITypeConverter

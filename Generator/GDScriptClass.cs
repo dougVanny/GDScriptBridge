@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
+using static GDScriptBridge.Types.TypeInfoEnum;
 
 namespace GDScriptBridge.Generator
 {
@@ -108,18 +109,36 @@ namespace GDScriptBridge.Generator
 			}
 		}
 
-		public StringBuilder Generate(GDScriptFolder folder, TypeConverterCollection globalTypeConverter, StringBuilder sb = null)
+		public void EvaluateExpressions()
+		{
+			for (int i = 0; i < enums.Count; i++)
+            {
+				GDScriptEnum gdEnum = enums[i];
+				if (!gdEnum.GetAsTypeInfo(this).IsValidEnum)
+				{
+					enums.RemoveAt(i--);
+				}
+			}
+
+            foreach (GDScriptClass innerClass in innerClasses)
+            {
+				innerClass.EvaluateExpressions();
+
+			}
+        }
+
+		public StringBuilder Generate(StringBuilder sb = null)
 		{
 			if (sb == null) sb = new StringBuilder();
 
-			FindType("Array [ bool ]", folder, globalTypeConverter);
+			FindType("Array [ bool ]");
 
 			sb.Append($"public class {uniqueName} : GDScriptBridge.Bundled.BaseGDBridge");
 			using (CodeBlock.Brackets(sb))
 			{
 				foreach (GDScriptClass innerClass in innerClasses)
 				{
-					innerClass.Generate(folder, globalTypeConverter, sb);
+					innerClass.Generate(sb);
 				}
 
 				sb.Append($"public static {uniqueName} New()");
@@ -143,17 +162,19 @@ namespace GDScriptBridge.Generator
 					sb.Append($"public enum {_enum.uniqueName}");
 					using (CodeBlock.Brackets(sb))
 					{
+						TypeInfoEnum typeInfoEnum = _enum.GetAsTypeInfo(this);
+
 						bool comma = false;
 
-						foreach (GDScriptEnum.Option enumValue in _enum.options)
-						{
+                        foreach ((OptionInfo optionInfo, long optionValue) option in typeInfoEnum.Options)
+                        {
 							if (comma) sb.Append(",");
 
-							sb.Append($"{enumValue.name}");
+							sb.Append($"{option.optionInfo.cSharpName}");
 
-							if (enumValue.declaredValueExpression != null)
+							if (option.optionInfo.value != null)
 							{
-								sb.Append($" = {enumValue.declaredValueExpression}");
+								sb.Append($" = {option.optionValue}");
 							}
 
 							comma = true;
@@ -166,7 +187,7 @@ namespace GDScriptBridge.Generator
 
 				foreach (GDScriptField variable in allVariables)
 				{
-					TypeInfo typeInfo = FindType(variable.type, folder, globalTypeConverter)?? TYPEINFO_VARIANT;
+					TypeInfo typeInfo = FindType(variable.type)?? TYPEINFO_VARIANT;
 
 					sb.Append($"public {typeInfo.cSharpName} {variable.uniqueName}");
 					using (CodeBlock.Brackets(sb))
@@ -214,7 +235,7 @@ namespace GDScriptBridge.Generator
 							{
 								if (comma) sb.Append(",");
 
-								TypeInfo typeInfo = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
+								TypeInfo typeInfo = FindType(parameter.type) ?? TYPEINFO_VARIANT;
 
 								sb.Append($"{typeInfo.cSharpName} {parameter.name}");
 
@@ -259,7 +280,7 @@ namespace GDScriptBridge.Generator
 											{
 												if (comma) sb.Append(",");
 
-												TypeInfo parameterType = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
+												TypeInfo parameterType = FindType(parameter.type) ?? TYPEINFO_VARIANT;
 
 												sb.Append(parameterType.CastFromVariant(parameter.name));
 
@@ -293,7 +314,32 @@ namespace GDScriptBridge.Generator
 				{
 					List<GDScriptMethod.Param> parametersToInitialize = new List<GDScriptMethod.Param>();
 
-					TypeInfo returnTypeInfo = FindType(method.returnType, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
+					Dictionary<GDScriptMethod.Param, OperationEvaluation> defaultValues = new Dictionary<GDScriptMethod.Param, OperationEvaluation>();
+					foreach (GDScriptMethod.Param parameter in method.methodParams)
+					{
+						if (parameter.defaultValue != null)
+						{
+							OperationEvaluation value = parameter.defaultValue.Evaluate(this);
+
+							if (value.type == OperationEvaluation.Type.Reference)
+							{
+								if (value.RetrieveReference() == null)
+								{
+									defaultValues.Clear();
+									break;
+								}
+							}
+							else if (value.type == OperationEvaluation.Type.Undefined)
+							{
+								defaultValues.Clear();
+								break;
+							}
+
+							defaultValues.Add(parameter, value);
+						}
+					}
+
+					TypeInfo returnTypeInfo = FindType(method.returnType) ?? TYPEINFO_VARIANT;
 
 					sb.Append($"public {returnTypeInfo.cSharpName} {method.uniqueName}");
 					using (CodeBlock.Parenthesis(sb))
@@ -304,9 +350,9 @@ namespace GDScriptBridge.Generator
 						{
 							if (comma) sb.Append(",");
 
-							TypeInfo paramTypeInfo = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
+							TypeInfo paramTypeInfo = FindType(parameter.type) ?? TYPEINFO_VARIANT;
 
-							if (paramTypeInfo == TYPEINFO_VARIANT && parameter.defaultValueExpression != null)
+							if (paramTypeInfo == TYPEINFO_VARIANT && defaultValues.ContainsKey(parameter))
 							{
 								sb.Append($"Variant? {parameter.name} = null");
 
@@ -316,9 +362,27 @@ namespace GDScriptBridge.Generator
 							{
 								sb.Append($"{paramTypeInfo.cSharpName} {parameter.name}");
 
-								if (parameter.defaultValueExpression != null)
+								if (defaultValues.ContainsKey(parameter))
 								{
-									sb.Append($" = {parameter.defaultValueExpression}");
+									sb.Append($" = ");
+
+									if (defaultValues[parameter].type == OperationEvaluation.Type.Reference)
+									{
+										OperationEvaluation.Reference reference = defaultValues[parameter].RetrieveReference();
+
+										if (reference.type is TypeInfoEnum)
+										{
+											sb.Append(reference.AsCode());
+										}
+										else
+										{
+											sb.Append(defaultValues[parameter].AsCode());
+										}
+									}
+									else
+									{
+										sb.Append(defaultValues[parameter].AsCode());
+									}
 								}
 							}
 
@@ -331,19 +395,26 @@ namespace GDScriptBridge.Generator
 						{
 							sb.Append($"if({parameter.name} == null) {parameter.name} = ");
 
-							if (parameter.defaultValueExpression == "null")
+							if (defaultValues[parameter].type == OperationEvaluation.Type.Null)
 							{
 								sb.Append("default(Variant);");
 							}
-							/*
-							else if (looksLikeEnumValue(parameter.defaultValueExpression))
+							else if (defaultValues[parameter].type == OperationEvaluation.Type.Reference)
 							{
-								sb.Append($"Variant.CreateFrom((int){parameter.defaultValueExpression});");
+								OperationEvaluation.Reference reference = defaultValues[parameter].RetrieveReference();
+
+								if (reference.type is TypeInfoEnum)
+								{
+									sb.Append($"Variant.CreateFrom((int){reference.AsCode()});");
+								}
+								else
+								{
+									sb.Append($"Variant.CreateFrom({defaultValues[parameter].AsCode()});");
+								}
 							}
-							*/
 							else
 							{
-								sb.Append($"Variant.CreateFrom({parameter.defaultValueExpression});");
+								sb.Append($"Variant.CreateFrom({defaultValues[parameter].AsCode()});");
 							}
 						}
 
@@ -356,7 +427,7 @@ namespace GDScriptBridge.Generator
 
 							foreach (GDScriptMethod.Param parameter in method.methodParams)
 							{
-								TypeInfo paramTypeInfo = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
+								TypeInfo paramTypeInfo = FindType(parameter.type) ?? TYPEINFO_VARIANT;
 
 								if (parametersToInitialize.Contains(parameter))
 								{
@@ -385,25 +456,25 @@ namespace GDScriptBridge.Generator
 			return sb;
 		}
 
-		public TypeInfoGDScriptClass GetAsTypeInfo(GDScriptFolder folder)
+		public TypeInfoGDScriptClass GetAsTypeInfo()
 		{
-			return new TypeInfoGDScriptClass(this, folder);
+			return new TypeInfoGDScriptClass(this);
 		}
 
-		TypeInfo FindType(string type, GDScriptFolder folder, TypeConverterCollection globalTypeConverter)
+		TypeInfo FindType(string type)
 		{
 			if (type == null) return null;
 
-			TypeInfo localTypeInfo = GetAsTypeInfo(folder).GetSubType(type);
+			TypeInfo localTypeInfo = GetAsTypeInfo().GetSubType(type);
 			if (localTypeInfo != null) return localTypeInfo;
 
 			if (parentClass != null)
 			{
-				return parentClass.FindType(type, folder, globalTypeConverter);
+				return parentClass.FindType(type);
 			}
 			else
 			{
-				return globalTypeConverter.GetTypeInfo(type);
+				return owner.globalContext.GetTypeInfo(type);
 			}
 		}
 	}
@@ -411,12 +482,10 @@ namespace GDScriptBridge.Generator
 	public class TypeInfoGDScriptClass : TypeInfo, ITypeInfoClass
 	{
 		GDScriptClass gdClass;
-		GDScriptFolder folder;
 
-		public TypeInfoGDScriptClass(GDScriptClass gdClass, GDScriptFolder folder) : base(gdClass.name, gdClass.fullCSharpName)
+		public TypeInfoGDScriptClass(GDScriptClass gdClass) : base(gdClass.name, gdClass.fullCSharpName)
 		{
 			this.gdClass = gdClass;
-			this.folder = folder;
 
 			isVariantCompatible = false;
 		}
@@ -446,14 +515,7 @@ namespace GDScriptBridge.Generator
 				{
 					if (parts[0].Equals(gdScriptEnum.name))
 					{
-						TypeInfoEnum typeInfoEnum = new TypeInfoEnum(gdScriptEnum.name, $"{cSharpName}.{gdScriptEnum.uniqueName}");
-
-						foreach (GDScriptEnum.Option enumOption in gdScriptEnum.options)
-						{
-							typeInfoEnum.options.Add(enumOption.name);
-						}
-
-						return typeInfoEnum;
+						return gdScriptEnum.GetAsTypeInfo(gdClass);
 					}
 				}
 			}
@@ -462,7 +524,7 @@ namespace GDScriptBridge.Generator
             {
 				if (innerClass.name.Equals(parts[0]))
 				{
-					TypeInfoGDScriptClass typeInfoClass = innerClass.GetAsTypeInfo(folder);
+					TypeInfoGDScriptClass typeInfoClass = innerClass.GetAsTypeInfo();
 
 					if (parts.Count == 1) return typeInfoClass;
 					
@@ -478,14 +540,14 @@ namespace GDScriptBridge.Generator
 
 					if (!string.IsNullOrEmpty(typeReference.preload))
 					{
-						GDScriptClassFile file = folder.GetClassFile(typeReference.preload, gdClass.owner.godotScriptPath);
+						GDScriptClassFile file = gdClass.owner.folder.GetClassFile(typeReference.preload, gdClass.owner.godotScriptPath);
 
 						if (file == null) return null;
 
 						context = file.gdScriptClass;
 					}
 
-					TypeInfo referencedType = context.GetAsTypeInfo(folder).GetSubType(string.Join(".", typeReference.memberPath));
+					TypeInfo referencedType = context.GetAsTypeInfo().GetSubType(string.Join(".", typeReference.memberPath));
 
 					if (parts.Count == 1)
 					{
