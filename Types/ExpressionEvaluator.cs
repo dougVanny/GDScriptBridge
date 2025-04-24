@@ -295,6 +295,21 @@ namespace GDScriptBridge.Types
 			{
 				return Evaluate(context, bracketExpression.InnerExpression);
 			}
+			else if (expression is GDIfExpression ifExpression)
+			{
+				OperationEvaluation condition = Evaluate(context, ifExpression.Condition);
+
+				if (condition.type != OperationEvaluation.Type.Bool) return new OperationEvaluation(context);
+
+				if (condition.boolValue)
+				{
+					return Evaluate(context, ifExpression.TrueExpression);
+				}
+				else
+				{
+					return Evaluate(context, ifExpression.FalseExpression);
+				}
+			}
 			else if (expression is GDSingleOperatorExpression singleOperatorExpression)
 			{
 				OperationEvaluation target = Evaluate(context, singleOperatorExpression.TargetExpression);
