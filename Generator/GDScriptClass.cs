@@ -166,20 +166,14 @@ namespace GDScriptBridge.Generator
 					{
 						TypeInfoEnum typeInfoEnum = _enum.GetAsTypeInfo(this);
 
-						bool comma = false;
-
-                        foreach ((OptionInfo optionInfo, long optionValue) option in typeInfoEnum.Options)
+                        foreach ((OptionInfo optionInfo, long optionValue) option in StringBuilderIterable.Comma(sb, typeInfoEnum.Options))
                         {
-							if (comma) sb.Append(",");
-
 							sb.Append($"{option.optionInfo.cSharpName}");
 
 							if (option.optionInfo.value != null)
 							{
 								sb.Append($" = {option.optionValue}");
 							}
-
-							comma = true;
 						}
 					}
 				}
@@ -209,39 +203,14 @@ namespace GDScriptBridge.Generator
 				{
 					if (signal.parameters.Count > 0)
 					{
-						StringBuilder angleBracketBuilder = new StringBuilder();
-						using (CodeBlock.AngleBracket(angleBracketBuilder))
-						{
-							bool comma = false;
-
-							foreach (GDScriptSignal.Param parameter in signal.parameters)
-							{
-								if (comma) angleBracketBuilder.Append(",");
-
-								//TypeInfo typeInfo = FindType(parameter.type, folder, globalTypeConverter) ?? TYPEINFO_VARIANT;
-								//angleBracketBuilder.Append(typeInfo.cSharpName);
-								
-								angleBracketBuilder.Append("Variant");
-
-								comma = true;
-							}
-						}
-						string angleBracket = angleBracketBuilder.ToString();
-
 						sb.Append($"public delegate void {signal.uniqueName}EventHandler");
 						using (CodeBlock.Parenthesis(sb))
 						{
-							bool comma = false;
-
-							foreach (GDScriptSignal.Param parameter in signal.parameters)
+							foreach (GDScriptSignal.Param parameter in StringBuilderIterable.Comma(sb, signal.parameters))
 							{
-								if (comma) sb.Append(",");
-
 								TypeInfo typeInfo = FindType(parameter.type) ?? TYPEINFO_VARIANT;
 
 								sb.Append($"{typeInfo.cSharpName} {parameter.name}");
-
-								comma = true;
 							}
 						}
 						sb.Append(";");
@@ -265,15 +234,9 @@ namespace GDScriptBridge.Generator
 									sb.Append("void VariantCasting");
 									using (CodeBlock.Parenthesis(sb))
 									{
-										bool comma = false;
-
-										foreach (GDScriptSignal.Param parameter in signal.parameters)
+										foreach (GDScriptSignal.Param parameter in StringBuilderIterable.Comma(sb, signal.parameters))
 										{
-											if (comma) sb.Append(",");
-
 											sb.Append($"Variant {parameter.name}");
-
-											comma = true;
 										}
 									}
 									using (CodeBlock.Brackets(sb))
@@ -281,21 +244,25 @@ namespace GDScriptBridge.Generator
 										sb.Append("value.Invoke");
 										using (CodeBlock.Parenthesis(sb))
 										{
-											bool comma = false;
-
-											foreach (GDScriptSignal.Param parameter in signal.parameters)
+											foreach (GDScriptSignal.Param parameter in StringBuilderIterable.Comma(sb, signal.parameters))
 											{
-												if (comma) sb.Append(",");
-
 												TypeInfo parameterType = FindType(parameter.type) ?? TYPEINFO_VARIANT;
 
 												sb.Append(parameterType.CastFromVariant(parameter.name));
-
-												comma = true;
 											}
 										}
 										sb.Append(";");
 									}
+
+									StringBuilder angleBracketBuilder = new StringBuilder();
+									using (CodeBlock.AngleBracket(angleBracketBuilder))
+									{
+										foreach (GDScriptSignal.Param parameter in StringBuilderIterable.Comma(angleBracketBuilder, signal.parameters))
+										{
+											angleBracketBuilder.Append("Variant");
+										}
+									}
+									string angleBracket = angleBracketBuilder.ToString();
 
 									sb.Append($"{signal.uniqueName}Callables.Add(value, Callable.From{angleBracket}(new Action{angleBracket}(VariantCasting)));");
 								}
@@ -351,12 +318,8 @@ namespace GDScriptBridge.Generator
 					sb.Append($"public {returnTypeInfo.cSharpName} {method.uniqueName}");
 					using (CodeBlock.Parenthesis(sb))
 					{
-						bool comma = false;
-
-						foreach (GDScriptMethod.Param parameter in method.methodParams)
+						foreach (GDScriptMethod.Param parameter in StringBuilderIterable.Comma(sb, method.methodParams))
 						{
-							if (comma) sb.Append(",");
-
 							TypeInfo paramTypeInfo = FindType(parameter.type) ?? TYPEINFO_VARIANT;
 
 							if (paramTypeInfo == TYPEINFO_VARIANT && defaultValues.ContainsKey(parameter))
@@ -392,8 +355,6 @@ namespace GDScriptBridge.Generator
 									}
 								}
 							}
-
-							comma = true;
 						}
 					}
 					using (CodeBlock.Brackets(sb))

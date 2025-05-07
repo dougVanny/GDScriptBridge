@@ -188,6 +188,8 @@ namespace GDScriptBridge.Generator
 		public string returnType;
 		public List<Param> methodParams = new List<Param>();
 
+		public string stringDeclaration;
+
 		public GDScriptMethod(GDMethodDeclaration methodDeclaration, UniqueSymbolConverter uniqueSymbolConverter) : base(methodDeclaration.Identifier.ToString(), uniqueSymbolConverter)
 		{
 			returnType = methodDeclaration.ReturnType == null ? null : methodDeclaration.ReturnType.ToString();
@@ -196,6 +198,10 @@ namespace GDScriptBridge.Generator
 			{
 				methodParams.Add(new Param(parameterDeclaration));
 			}
+
+			methodDeclaration = methodDeclaration.Clone() as GDMethodDeclaration;
+			methodDeclaration.Statements.Clear();
+			stringDeclaration = methodDeclaration.ToString().Trim();
 		}
 	}
 }
