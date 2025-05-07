@@ -12,6 +12,8 @@ namespace GDScriptBridge.Generator
 {
 	public class GDScriptClass : GDScriptBase
 	{
+		const string ASSEMBLY_UNLOADING_SIGNAL_WARNING = "Connecting to custom signals with parameters while running in the editor will cause assembly unload errors. Please avoid this at all costs.";
+
 		static readonly TypeInfo TYPEINFO_VARIANT = new TypeInfoVariant();
 
 		public string extends;
@@ -252,6 +254,11 @@ namespace GDScriptBridge.Generator
 							sb.Append("add");
 							using (CodeBlock.Brackets(sb))
 							{
+								sb.Append($"\n#if TOOLS\n");
+								sb.Append($"if (Engine.IsEditorHint())");
+								sb.Append($"GD.PushWarning(\"{ASSEMBLY_UNLOADING_SIGNAL_WARNING}\");");
+								sb.Append($"\n#endif\n");
+
 								sb.Append($"if (!{signal.uniqueName}Callables.ContainsKey(value))");
 								using (CodeBlock.Brackets(sb))
 								{

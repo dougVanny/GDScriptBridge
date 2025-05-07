@@ -20,7 +20,7 @@ namespace GDScriptBridge.Generator
 		public void Execute(GeneratorExecutionContext context)
 		{
 			#if DEBUG
-				Debugger.Launch();
+				//Debugger.Launch();
 			#endif
 
 			string godotRoot;
