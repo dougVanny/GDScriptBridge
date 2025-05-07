@@ -2,13 +2,10 @@
 using GDScriptBridge.Types;
 using GDScriptBridge.Utils;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
-using System.Text;
 
 namespace GDScriptBridge.Generator
 {
@@ -17,13 +14,17 @@ namespace GDScriptBridge.Generator
 	public class GDScriptBridgeSourceGenerator : ISourceGenerator
 	{
 		const string GD_SCRIPT_EXTENSION = ".gd";
+		const string BUILD_PROPERTY_GodotProjectDir = "build_property.godotprojectdir";
+		const string BUILD_METADATA_SkipGenerator = "build_metadata.AdditionalFiles.GDScriptBridge_SkipGenerator";
 
 		public void Execute(GeneratorExecutionContext context)
 		{
-			//Debugger.Launch();
+			#if DEBUG
+				Debugger.Launch();
+			#endif
 
 			string godotRoot;
-			context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.godotprojectdir", out godotRoot);
+			context.AnalyzerConfigOptions.GlobalOptions.TryGetValue(BUILD_PROPERTY_GodotProjectDir, out godotRoot);
 			Uri godotRootUri = new Uri(Uri.UnescapeDataString(godotRoot), UriKind.Absolute);
 
 			TypeConverterCollection globalContext = new TypeConverterCollection();
@@ -34,6 +35,9 @@ namespace GDScriptBridge.Generator
 			foreach (AdditionalText additionalFile in context.AdditionalFiles)
 			{
 				if (Path.GetExtension(additionalFile.Path) != GD_SCRIPT_EXTENSION) continue;
+
+				context.AnalyzerConfigOptions.GetOptions(additionalFile).TryGetValue(BUILD_METADATA_SkipGenerator, out string skipGenerator);
+				if (skipGenerator != null && skipGenerator.ToLower().Equals("true")) continue;
 
 				SourceText sourceText = additionalFile.GetText();
 				if (sourceText == null) continue;

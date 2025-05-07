@@ -6,6 +6,10 @@
 	  <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+	  <None Include="build/GDScriptBridge.props" Visible="false" Pack="true" PackagePath="build" />
+  </ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="GDShrapt.Reader" Version="4.3.1.2-alpha" GeneratePathProperty="true" PrivateAssets="all" />
 
