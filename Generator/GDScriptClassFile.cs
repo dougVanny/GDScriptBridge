@@ -75,6 +75,8 @@ namespace GDScriptBridge.Generator
 		{
 			StringBuilder sb = new StringBuilder();
 
+			sb.Append("#pragma warning disable CS0109\n\n");
+
 			sb.Append("using Godot;");
 			sb.Append("using System;");
 			sb.Append("using System.Linq;");

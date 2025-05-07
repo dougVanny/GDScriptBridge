@@ -31,6 +31,8 @@ namespace GDScriptBridge.Generator
 
 		public List<GDScriptClass> innerClasses = new List<GDScriptClass>();
 
+		UniqueSymbolConverter uniqueSymbolConverter;
+
 		public GDScriptClass(GDScriptClassFile owner, GDClassDeclaration classDeclaration) : base(classDeclaration.ClassName==null?null:classDeclaration.ClassName.Identifier.ToString(), null)
 		{
 			this.owner = owner;
@@ -65,7 +67,7 @@ namespace GDScriptBridge.Generator
 
 		void ParseClass(GDClassMembersList members)
 		{
-			UniqueSymbolConverter uniqueSymbolConverter = new UniqueSymbolConverter(UniqueSymbolConverter.ToTitleCase);
+			uniqueSymbolConverter = new UniqueSymbolConverter(UniqueSymbolConverter.ToTitleCase);
 
 			foreach (GDEnumDeclaration enumDeclaration in members.OfType<GDEnumDeclaration>())
 			{
@@ -133,9 +135,19 @@ namespace GDScriptBridge.Generator
 		{
 			if (sb == null) sb = new StringBuilder();
 
-			FindType("Array [ bool ]");
+			TypeInfo extendsTypeInfo = FindType(extends);
 
-			sb.Append($"public class {uniqueName} : GDScriptBridge.Bundled.BaseGDBridge");
+			sb.Append($"public class {uniqueName} : ");
+
+			if (extendsTypeInfo is TypeInfoGDScriptClass)
+			{
+				sb.Append(extendsTypeInfo.cSharpName);
+			}
+			else
+			{
+				sb.Append("GDScriptBridge.Bundled.BaseGDBridge");
+			}
+
 			using (CodeBlock.Brackets(sb))
 			{
 				foreach (GDScriptClass innerClass in innerClasses)
@@ -143,19 +155,21 @@ namespace GDScriptBridge.Generator
 					innerClass.Generate(sb);
 				}
 
-				sb.Append($"public static {uniqueName} New()");
+				sb.Append($"public {uniqueName}()");
 				using (CodeBlock.Brackets(sb))
 				{
 					sb.Append($"GDScript myGDScript = GD.Load<GDScript>(typeof({uniqueName}).GetCustomAttribute<GDScriptBridge.Bundled.ScriptPathAttribute>().godotPath);");
-					sb.Append($"return new {uniqueName}() {{ godotObject = (GodotObject)myGDScript.New() }};");
+					sb.Append($"godotObject = (GodotObject)myGDScript.New();");
 				}
 
-				if (extends != null)
+				if (extendsTypeInfo is TypeInfoGodotClass)
 				{
-					sb.Append($"public {extends} As{extends}");
+					string extendProperty = uniqueSymbolConverter.Convert($"As_{extendsTypeInfo.cSharpName.Split('.').Last()}");
+
+					sb.Append($"public {extendsTypeInfo.cSharpName} {extendProperty}");
 					using (CodeBlock.Brackets(sb))
 					{
-						sb.Append($"get => ({extends})godotObject;");
+						sb.Append($"get => ({extendsTypeInfo.cSharpName})godotObject;");
 					}
 				}
 
@@ -315,7 +329,7 @@ namespace GDScriptBridge.Generator
 
 					TypeInfo returnTypeInfo = FindType(method.returnType) ?? TYPEINFO_VARIANT;
 
-					sb.Append($"public {returnTypeInfo.cSharpName} {method.uniqueName}");
+					sb.Append($"public new {returnTypeInfo.cSharpName} {method.uniqueName}");
 					using (CodeBlock.Parenthesis(sb))
 					{
 						foreach (GDScriptMethod.Param parameter in StringBuilderIterable.Comma(sb, method.methodParams))
