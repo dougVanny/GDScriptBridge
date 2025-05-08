@@ -13,5 +13,10 @@ namespace GDScriptBridge.Utils
 		}
 
 		public abstract string Generate();
+
+		public static string AsDocumentation(string input)
+		{
+			return "\n/// <summary>" + string.Join("<para/>\n/// ", input.Split('\n')) + "</summary>\n";
+		}
 	}
 }

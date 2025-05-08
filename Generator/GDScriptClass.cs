@@ -12,7 +12,7 @@ namespace GDScriptBridge.Generator
 {
 	public class GDScriptClass : GDScriptBase
 	{
-		const string ASSEMBLY_UNLOADING_SIGNAL_WARNING = "Connecting to custom signals with parameters while running in the editor will cause assembly unload errors. Please avoid this at all costs.";
+		const string ASSEMBLY_UNLOADING_SIGNAL_WARNING = "Connecting to custom signals with parameters while running in the editor will cause assembly unload errors. Please avoid this whenever possible.";
 
 		static readonly TypeInfo TYPEINFO_VARIANT = new TypeInfoVariant();
 
@@ -229,7 +229,7 @@ namespace GDScriptBridge.Generator
 						}
 						sb.Append(";");
 
-						sb.Append($"private Dictionary<{signal.uniqueName}EventHandler, Callable> {signal.uniqueName}Callables =  new Dictionary<{signal.uniqueName}EventHandler, Callable>();");
+						sb.Append($"private Dictionary<{signal.uniqueName}EventHandler, List<Callable>> {signal.uniqueName}Callables =  new Dictionary<{signal.uniqueName}EventHandler, List<Callable>>();");
 
 						sb.Append($"public event {signal.uniqueName}EventHandler {signal.uniqueName}");
 						using (CodeBlock.Brackets(sb))
@@ -245,46 +245,54 @@ namespace GDScriptBridge.Generator
 								sb.Append($"if (!{signal.uniqueName}Callables.ContainsKey(value))");
 								using (CodeBlock.Brackets(sb))
 								{
-									sb.Append("void VariantCasting");
+									sb.Append($"{signal.uniqueName}Callables.Add(value, new List<Callable>());");
+								}
+
+								sb.Append("void VariantCasting");
+								using (CodeBlock.Parenthesis(sb))
+								{
+									foreach (GDScriptSignal.Param parameter in StringBuilderIterable.Comma(sb, signal.parameters))
+									{
+										sb.Append($"Variant {parameter.name}");
+									}
+								}
+								using (CodeBlock.Brackets(sb))
+								{
+									sb.Append("value.Invoke");
 									using (CodeBlock.Parenthesis(sb))
 									{
 										foreach (GDScriptSignal.Param parameter in StringBuilderIterable.Comma(sb, signal.parameters))
 										{
-											sb.Append($"Variant {parameter.name}");
+											TypeInfo parameterType = FindType(parameter.type) ?? TYPEINFO_VARIANT;
+
+											sb.Append(parameterType.CastFromVariant(parameter.name));
 										}
 									}
-									using (CodeBlock.Brackets(sb))
-									{
-										sb.Append("value.Invoke");
-										using (CodeBlock.Parenthesis(sb))
-										{
-											foreach (GDScriptSignal.Param parameter in StringBuilderIterable.Comma(sb, signal.parameters))
-											{
-												TypeInfo parameterType = FindType(parameter.type) ?? TYPEINFO_VARIANT;
-
-												sb.Append(parameterType.CastFromVariant(parameter.name));
-											}
-										}
-										sb.Append(";");
-									}
-
-									StringBuilder angleBracketBuilder = new StringBuilder();
-									using (CodeBlock.AngleBracket(angleBracketBuilder))
-									{
-										foreach (GDScriptSignal.Param parameter in StringBuilderIterable.Comma(angleBracketBuilder, signal.parameters))
-										{
-											angleBracketBuilder.Append("Variant");
-										}
-									}
-									string angleBracket = angleBracketBuilder.ToString();
-
-									sb.Append($"{signal.uniqueName}Callables.Add(value, Callable.From{angleBracket}(new Action{angleBracket}(VariantCasting)));");
+									sb.Append(";");
 								}
 
-								sb.Append($"godotObject.Connect(\"{signal.name}\", {signal.uniqueName}Callables[value]);");
+								StringBuilder angleBracketBuilder = new StringBuilder();
+								using (CodeBlock.AngleBracket(angleBracketBuilder))
+								{
+									foreach (GDScriptSignal.Param parameter in StringBuilderIterable.Comma(angleBracketBuilder, signal.parameters))
+									{
+										angleBracketBuilder.Append("Variant");
+									}
+								}
+								string angleBracket = angleBracketBuilder.ToString();
+
+								sb.Append($"Callable __callable = Callable.From{angleBracket}(new Action{angleBracket}(VariantCasting));");
+								sb.Append($"{signal.uniqueName}Callables[value].Add(__callable);");
+
+								sb.Append($"godotObject.Connect(\"{signal.name}\", __callable);");
 							}
 
-							sb.Append($"remove => godotObject.Disconnect(\"{signal.name}\", {signal.uniqueName}Callables[value]);");
+							sb.Append($"remove");
+							using (CodeBlock.Brackets(sb))
+							{
+								sb.Append($"godotObject.Disconnect(\"{signal.name}\", {signal.uniqueName}Callables[value][0]);");
+								sb.Append($"{signal.uniqueName}Callables[value].RemoveAt(0);");
+							}
 						}
 					}
 					else
@@ -329,6 +337,7 @@ namespace GDScriptBridge.Generator
 
 					TypeInfo returnTypeInfo = FindType(method.returnType) ?? TYPEINFO_VARIANT;
 
+					sb.Append(CodeGenerator.AsDocumentation($"Original Declaration:\n{method.stringDeclaration}"));
 					sb.Append($"public new {returnTypeInfo.cSharpName} {method.uniqueName}");
 					using (CodeBlock.Parenthesis(sb))
 					{
