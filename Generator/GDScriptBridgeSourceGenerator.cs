@@ -62,7 +62,7 @@ namespace GDScriptBridge.Generator
 			codeBundle = new BaseGDBridgeBundle();
 			context.AddSource(uniqueFileNameConverter.Convert(codeBundle.GetClassName()), codeBundle.GenerateSource());
 
-			codeBundle = new GDBridgeWrapperBundle();
+			codeBundle = new GDBridgeWrapperBundle(gdScriptFolder);
 			context.AddSource(uniqueFileNameConverter.Convert(codeBundle.GetClassName()), codeBundle.GenerateSource());
 
 			foreach (GDScriptClassFile file in gdScriptFolder.GetFiles())

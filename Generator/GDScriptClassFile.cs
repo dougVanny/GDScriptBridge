@@ -87,7 +87,7 @@ namespace GDScriptBridge.Generator
 			sb.Append($"namespace {GetNamespace()}");
 			using (CodeBlock.Brackets(sb))
 			{
-				sb.Append($"[GDScriptBridge.Bundled.ScriptPathAttribute(\"{godotScriptPath}\")]");
+				sb.Append($"[GDScriptBridge.Bundled.ScriptPathAttribute(@\"{godotScriptPath}\")]");
 				gdScriptClass.Generate(sb);
 			}
 
