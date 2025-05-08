@@ -131,7 +131,7 @@ namespace GDScriptBridge.Types
 
 		const string DICTIONARY_GROUP_KEY = "key";
 		const string DICTIONARY_GROUP_VALUE = "value";
-		static readonly Regex DICTIONARY = new Regex(DICTIONARY_PURE + @"\s*\[\s*(?<" + DICTIONARY_GROUP_KEY + @">[^\s]+)\s*(?<" + DICTIONARY_GROUP_VALUE + @">[^\s]+)\s*\]");
+		static readonly Regex DICTIONARY = new Regex(DICTIONARY_PURE + @"\s*\[\s*(?<" + DICTIONARY_GROUP_KEY + @">[^\s]+)\s*,\s*(?<" + DICTIONARY_GROUP_VALUE + @">[^\s]+)\s*\]");
 
 		List<ITypeConverter> typeConverters = new List<ITypeConverter>();
 
