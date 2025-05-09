@@ -63,7 +63,7 @@ namespace GDScriptBridge.Generator.Bridge
             codeBundle = new BaseGDBridgeBundle();
             context.AddSource(uniqueFileNameConverter.Convert("Bundled_" + codeBundle.GetClassName()), codeBundle.GenerateSource());
 
-            codeBundle = new GDBridgeWrapperBundle(gdScriptFolder);
+            codeBundle = new GDBridgeExtensionBundle(gdScriptFolder);
             context.AddSource(uniqueFileNameConverter.Convert("Bundled_" + codeBundle.GetClassName()), codeBundle.GenerateSource());
 
             codeBundle = new ExportGDBridgeBundle();

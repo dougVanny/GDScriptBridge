@@ -89,7 +89,7 @@ namespace GDScriptBridge.Generator.Bridge
             {
 				GDScriptClass.BaseType baseType = gdScriptClass.FindBaseType();
 
-                sb.Append($"[GDScriptBridge.Bundled.ScriptPathAttribute(@\"{godotScriptPath}\"");
+                sb.Append($"[GDScriptBridge.Bundled.GDScriptPathAttribute(@\"{godotScriptPath}\"");
 
                 if (classDeclaration.ClassName != null)
                 {

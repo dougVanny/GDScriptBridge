@@ -191,7 +191,7 @@ namespace GDScriptBridge.Generator.Bridge
                 sb.Append($"public {uniqueName}()");
                 using (CodeBlock.Brackets(sb))
                 {
-                    sb.Append($"GDScript myGDScript = typeof({uniqueName}).GetCustomAttribute<GDScriptBridge.Bundled.ScriptPathAttribute>().LoadGDScript();");
+                    sb.Append($"GDScript myGDScript = typeof({uniqueName}).GetCustomAttribute<GDScriptBridge.Bundled.GDScriptPathAttribute>().LoadGDScript();");
                     sb.Append($"godotObject = (GodotObject)myGDScript.New();");
                 }
 

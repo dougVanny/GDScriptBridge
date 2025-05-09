@@ -91,6 +91,53 @@ namespace GDScriptBridge.Generator.Export
 						}
 					}
 				}
+
+				if (userClass.overrideMethods && false) //Any godot methods must be available before any source generation runs so even if the methods below are created, godot will never call them
+				{
+					sb.Append("public override Godot.Collections.Array<Godot.Collections.Dictionary> _GetPropertyList()");
+					using (CodeBlock.Brackets(sb))
+					{
+						sb.Append("return this.GetGDBridgePropertyList();");
+					}
+					
+					sb.Append("public override Variant _Get(StringName propertyName)");
+					using (CodeBlock.Brackets(sb))
+					{
+						sb.Append("if (this.IsExportGDBridgeProperty(propertyName) && HasMeta(propertyName))");
+						using (CodeBlock.Brackets(sb))
+						{
+							sb.Append("return GetMeta(propertyName);");
+						}
+
+						sb.Append("return default;");
+					}
+
+					sb.Append("public override bool _Set(StringName propertyName, Variant value)");
+					using (CodeBlock.Brackets(sb))
+					{
+						sb.Append("if (this.IsExportGDBridgeProperty(propertyName))");
+						using (CodeBlock.Brackets(sb))
+						{
+							sb.Append("SetMeta(propertyName, value);");
+
+							sb.Append("return true;");
+						}
+
+						sb.Append("return false;");
+					}
+
+					sb.Append("public override bool _PropertyCanRevert(StringName propertyName)");
+					using (CodeBlock.Brackets(sb))
+					{
+						sb.Append("return true;");
+					}
+
+					sb.Append("public override Variant _PropertyGetRevert(StringName propertyName)");
+					using (CodeBlock.Brackets(sb))
+					{
+						sb.Append("return default;");
+					}
+				}
             }
 
 			return sb.ToString();

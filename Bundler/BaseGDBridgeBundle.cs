@@ -32,21 +32,21 @@ namespace GDScriptBridge.Bundler
 				}
 
 				sb.Append("[AttributeUsage(AttributeTargets.Class, Inherited = false)]");
-				sb.Append("public class ScriptPathAttribute : Attribute");
+				sb.Append("public class GDScriptPathAttribute : Attribute");
 				using (CodeBlock.Brackets(sb))
 				{
 					sb.Append("public string godotPath;");
 					sb.Append("public string gdClassName;");
 					sb.Append("public BaseType baseType;");
 
-					sb.Append($"public ScriptPathAttribute(string godotPath, BaseType baseType = BaseType.{nameof(GDScriptClass.BaseType.UNKNOWN)})");
+					sb.Append($"public GDScriptPathAttribute(string godotPath, BaseType baseType = BaseType.{nameof(GDScriptClass.BaseType.UNKNOWN)})");
 					using (CodeBlock.Brackets(sb))
 					{
 						sb.Append("this.godotPath = godotPath;");
 						sb.Append("this.baseType = baseType;");
 					}
 
-					sb.Append($"public ScriptPathAttribute(string godotPath, string gdClassName, BaseType baseType = BaseType.{nameof(GDScriptClass.BaseType.UNKNOWN)})");
+					sb.Append($"public GDScriptPathAttribute(string godotPath, string gdClassName, BaseType baseType = BaseType.{nameof(GDScriptClass.BaseType.UNKNOWN)})");
 					using (CodeBlock.Brackets(sb))
 					{
 						sb.Append("this.godotPath = godotPath;");
