@@ -65,7 +65,7 @@ GDBridge currently supports accessing variables, methods, enums and signals or c
 
 ## How to install
 
-Get the lattest version from [Nuget](https://www.nuget.org/packages/GDScriptBridge) or from the [Releases page](https://github.com/dougVanny/GDScriptBridge/releases)
+Get the lattest version from the [Releases page](https://github.com/dougVanny/GDScriptBridge/releases)
 
 ## How to use
 
