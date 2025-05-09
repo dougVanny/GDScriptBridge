@@ -4,10 +4,26 @@
 	  <TargetFramework>netstandard2.0</TargetFramework>
 	  <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 	  <LangVersion>preview</LangVersion>
+	  <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+	  <Version>0.1.0-alpha</Version>
+	  <Authors>dougVanny</Authors>
+	  <Product>GDScriptBridge</Product>
+	  <Description>
+		  GDScriptBridge is a Source Generator for C# that will create bridge classes to ease interactions between C# and GDScript classes in Godot Projects
+	  </Description>
+	  <PackageLicenseFile>LICENSE</PackageLicenseFile>
+	  <PackageProjectUrl>https://github.com/dougVanny/GDScriptBridge</PackageProjectUrl>
+	  <Copyright>dougVanny</Copyright>
+	  <RepositoryUrl>https://github.com/dougVanny/GDScriptBridge</RepositoryUrl>
+	  <RepositoryType>git</RepositoryType>
+	  <PackageTags>GDScript bridge sourcegenerator source code generator codegeneration Godot</PackageTags>
+	  <AssemblyVersion>0.1.0</AssemblyVersion>
+	  <FileVersion>0.1.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
 	  <None Include="build/GDScriptBridge.props" Visible="false" Pack="true" PackagePath="build" />
+	  <None Include="LICENSE" Pack="true" PackagePath="" />
   </ItemGroup>
 
 	<ItemGroup>
@@ -40,5 +56,4 @@
 			<None Include="$(PkgMicrosoft_CodeAnalysis_Scripting_Common)\lib\netstandard2.0\Microsoft.CodeAnalysis.Scripting.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 		</ItemGroup>
 	</Target>
-
 </Project>
