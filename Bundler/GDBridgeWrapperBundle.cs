@@ -1,4 +1,5 @@
-﻿using GDScriptBridge.Types;
+﻿using GDScriptBridge.Generator.Bridge;
+using GDScriptBridge.Types;
 using GDScriptBridge.Utils;
 using System;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using System.Text;
 
 namespace GDScriptBridge.Bundler
 {
-	public class GDBridgeWrapperBundle : BaseCodeBundle
+    public class GDBridgeWrapperBundle : BaseCodeBundle
 	{
 		GDScriptFolder gdScriptFolder;
 
@@ -38,7 +39,7 @@ namespace GDScriptBridge.Bundler
 					sb.Append("private static Dictionary<string, Type> knownBridgeTypes = new Dictionary<string, Type>()");
 					using (CodeBlock.Brackets(sb))
 					{
-                        foreach (Generator.GDScriptClassFile file in StringBuilderIterable.Comma(sb,gdScriptFolder.GetFiles()))
+                        foreach (GDScriptClassFile file in StringBuilderIterable.Comma(sb,gdScriptFolder.GetFiles()))
                         {
 							sb.Append($"{{@\"{file.godotScriptPath}\",typeof({file.gdScriptClass.fullCSharpName})}}");
                         }

@@ -1,4 +1,5 @@
-﻿using GDScriptBridge.Utils;
+﻿using GDScriptBridge.Generator.Bridge;
+using GDScriptBridge.Utils;
 using System.Reflection;
 using System.Text;
 
@@ -22,15 +23,35 @@ namespace GDScriptBridge.Bundler
 			sb.Append("namespace GDScriptBridge.Bundled");
 			using (CodeBlock.Brackets(sb))
 			{
+				sb.Append("public enum BaseType");
+				using (CodeBlock.Brackets(sb))
+				{
+					sb.Append($"{nameof(GDScriptClass.BaseType.UNKNOWN)},");
+					sb.Append($"{nameof(GDScriptClass.BaseType.NODE)},");
+					sb.Append($"{nameof(GDScriptClass.BaseType.RESOURCE)},");
+				}
+
 				sb.Append("[AttributeUsage(AttributeTargets.Class, Inherited = false)]");
 				sb.Append("public class ScriptPathAttribute : Attribute");
 				using (CodeBlock.Brackets(sb))
 				{
 					sb.Append("public string godotPath;");
-					sb.Append("public ScriptPathAttribute(string godotPath)");
+					sb.Append("public string gdClassName;");
+					sb.Append("public BaseType baseType;");
+
+					sb.Append($"public ScriptPathAttribute(string godotPath, BaseType baseType = BaseType.{nameof(GDScriptClass.BaseType.UNKNOWN)})");
 					using (CodeBlock.Brackets(sb))
 					{
 						sb.Append("this.godotPath = godotPath;");
+						sb.Append("this.baseType = baseType;");
+					}
+
+					sb.Append($"public ScriptPathAttribute(string godotPath, string gdClassName, BaseType baseType = BaseType.{nameof(GDScriptClass.BaseType.UNKNOWN)})");
+					using (CodeBlock.Brackets(sb))
+					{
+						sb.Append("this.godotPath = godotPath;");
+						sb.Append("this.gdClassName = gdClassName;");
+						sb.Append("this.baseType = baseType;");
 					}
 
 					sb.Append("public GDScript LoadGDScript()");

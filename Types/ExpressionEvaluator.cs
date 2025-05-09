@@ -1,4 +1,4 @@
-﻿using GDScriptBridge.Generator;
+﻿using GDScriptBridge.Generator.Bridge;
 using GDShrapt.Reader;
 using System;
 using System.Collections.Generic;
@@ -7,7 +7,7 @@ using System.Text;
 
 namespace GDScriptBridge.Types
 {
-	public class OperationEvaluation
+    public class OperationEvaluation
 	{
 		public enum Type
 		{

@@ -1,4 +1,4 @@
-﻿using GDScriptBridge.Generator;
+﻿using GDScriptBridge.Generator.Bridge;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Text;
 
 namespace GDScriptBridge.Types
 {
-	public class GDScriptFolder : ITypeConverter
+    public class GDScriptFolder : ITypeConverter
 	{
 		Dictionary<string, GDScriptClassFile> files = new Dictionary<string, GDScriptClassFile>();
 		Dictionary<string, GDScriptClassFile> classes = new Dictionary<string, GDScriptClassFile>();

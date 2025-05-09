@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.Linq;
+using GDScriptBridge.Utils;
 
 namespace GDScriptBridge.Types
 {
@@ -16,16 +17,16 @@ namespace GDScriptBridge.Types
 		{
 			foreach (IAssemblySymbol assemblySymbol in context.Compilation.SourceModule.ReferencedAssemblySymbols)
             {
-				foreach (INamespaceSymbol namespaceSymbol in GetAllNamespaces(assemblySymbol.GlobalNamespace))
+				foreach (INamespaceSymbol namespaceSymbol in assemblySymbol.GlobalNamespace.GetAllNamespaces())
 				{
 					if (GODOT_NAMESPACE.Equals(namespaceSymbol.Name))
 					{
 						INamedTypeSymbol godotObject = null;
-						foreach (INamedTypeSymbol typeMembers in namespaceSymbol.GetTypeMembers())
+						foreach (INamedTypeSymbol typeMember in namespaceSymbol.GetTypeMembers())
 						{
-							if (GODOT_OBJECT_NAME.Equals(typeMembers.Name))
+							if (GODOT_OBJECT_NAME.Equals(typeMember.Name))
 							{
-								godotObject = typeMembers;
+								godotObject = typeMember;
 
 								break;
 							}
@@ -49,19 +50,6 @@ namespace GDScriptBridge.Types
             }
 		}
 
-		private static IEnumerable<INamespaceSymbol> GetAllNamespaces(INamespaceSymbol root)
-		{
-			yield return root;
-
-			foreach (var child in root.GetNamespaceMembers())
-			{
-				foreach (var next in GetAllNamespaces(child))
-				{
-					yield return next;
-				}
-			}
-		}
-
 		static TypeInfo GenerateTypeInfo(INamedTypeSymbol type, INamedTypeSymbol godotObject)
 		{
 			if (type.Name.StartsWith("<"))
@@ -70,9 +58,9 @@ namespace GDScriptBridge.Types
 			}
 			else if (type.TypeKind == TypeKind.Class)
 			{
-				if (!isValidClass(type, godotObject)) return null;
+				if (!type.InheritsFrom(godotObject)) return null;
 
-				TypeInfoGodotClass typeInfoClass = new TypeInfoGodotClass(type.Name);
+				TypeInfoGodotClass typeInfoClass = new TypeInfoGodotClass(type);
 
 				foreach (var childType in type.GetTypeMembers())
 				{
@@ -96,7 +84,7 @@ namespace GDScriptBridge.Types
 
 				if (containingSymbol != null && containingSymbol.TypeKind == TypeKind.Class)
 				{
-					if (!isValidClass(containingSymbol, godotObject)) return null;
+					if (!containingSymbol.InheritsFrom(godotObject)) return null;
 				}
 
 				if (type.TypeKind == TypeKind.Struct)
@@ -127,18 +115,6 @@ namespace GDScriptBridge.Types
 			{
 				return null;
 			}
-		}
-
-		static bool isValidClass(INamedTypeSymbol namedTypeSymbol, INamedTypeSymbol godotObject)
-		{
-			INamedTypeSymbol test = namedTypeSymbol;
-
-			while (test != null && !SymbolEqualityComparer.Default.Equals(test, godotObject))
-			{
-				test = test.BaseType;
-			}
-
-			return test != null;
 		}
 
 		public TypeInfo GetTypeInfo(string gdScriptType)
@@ -177,14 +153,12 @@ namespace GDScriptBridge.Types
 
 	public class TypeInfoGodotClass : TypeInfo, ITypeInfoClass
 	{
+		public INamedTypeSymbol classSymbol;
 		Dictionary<string, TypeInfo> subTypes = new Dictionary<string, TypeInfo>();
 
-		public TypeInfoGodotClass(string name) : base(name)
+		public TypeInfoGodotClass(INamedTypeSymbol classSymbol) : base(classSymbol.Name)
 		{
-		}
-
-		public TypeInfoGodotClass(string gdScriptName, string cSharpName) : base(gdScriptName, cSharpName)
-		{
+			this.classSymbol = classSymbol;
 		}
 
 		public void AddSubType(string subTypeName, TypeInfo subTypeInfo)
