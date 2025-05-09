@@ -8,12 +8,15 @@ using System.Linq;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis;
+using System.Text.RegularExpressions;
 
 namespace GDScriptBridge.Generator.Bridge
 {
     public class GDScriptClassFile
     {
-        public const string GODOT_RES_DRIVE = "res://";
+		static readonly Regex NAMESPACE_REPLACE_REGEX = new Regex(@"[^a-zA-Z0-9_]");
+
+		public const string GODOT_RES_DRIVE = "res://";
 
         const string GENERATED_CLASS_NAMESPACE = "GDScriptBridge.Generated";
         const string ANONYMOUS_CLASS_NAMESPACE = "GDScriptBridge.Anonymous.Generated";
@@ -60,9 +63,9 @@ namespace GDScriptBridge.Generator.Bridge
             }
             else
             {
-                List<string> namespaceParts = godotScriptPath.Substring(GODOT_RES_DRIVE.Length, godotScriptPath.Length - GODOT_RES_DRIVE.Length).Split('/').ToList();
+				List<string> namespaceParts = godotScriptPath.Substring(GODOT_RES_DRIVE.Length, godotScriptPath.Length - GODOT_RES_DRIVE.Length).Split('/').ToList();
                 namespaceParts.RemoveAt(namespaceParts.Count - 1);
-                return $"{ANONYMOUS_CLASS_NAMESPACE}.{string.Join(".", namespaceParts.ConvertAll(UniqueSymbolConverter.ToTitleCase))}";
+                return $"{ANONYMOUS_CLASS_NAMESPACE}.{string.Join(".", namespaceParts.ConvertAll(s => UniqueSymbolConverter.ToTitleCase(NAMESPACE_REPLACE_REGEX.Replace(s, ""))))}";
             }
         }
 

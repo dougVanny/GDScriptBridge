@@ -71,7 +71,7 @@ namespace GDScriptBridge.Generator.Bridge
 
             foreach (GDScriptClassFile file in gdScriptFolder.GetFiles())
             {
-                context.AddSource(uniqueFileNameConverter.Convert("GDScriptBridge_" + file.gdScriptClass.uniqueName), file.GenerateSource());
+                context.AddSource(uniqueFileNameConverter.Convert("GDScriptBridge_" + file.gdScriptClass.fullCSharpName), file.GenerateSource());
             }
 
 			ExportPropertiesLookup propertiesLookup = new ExportPropertiesLookup(context, gdScriptFolder);

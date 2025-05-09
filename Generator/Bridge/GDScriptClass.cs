@@ -257,7 +257,12 @@ namespace GDScriptBridge.Generator.Bridge
                             {
                                 TypeInfo typeInfo = FindType(parameter.type) ?? TYPEINFO_VARIANT;
 
-                                sb.Append($"{typeInfo.cSharpName} {parameter.name}");
+								if (CodeGenerator.keywords.Contains(parameter.name))
+								{
+                                    parameter.name = "@" + parameter.name;
+								}
+
+								sb.Append($"{typeInfo.cSharpName} {parameter.name}");
                             }
                         }
                         sb.Append(";");
@@ -346,7 +351,12 @@ namespace GDScriptBridge.Generator.Bridge
                     Dictionary<GDScriptMethod.Param, OperationEvaluation> defaultValues = new Dictionary<GDScriptMethod.Param, OperationEvaluation>();
                     foreach (GDScriptMethod.Param parameter in method.methodParams)
                     {
-                        if (parameter.defaultValue != null)
+						if (CodeGenerator.keywords.Contains(parameter.name))
+						{
+							parameter.name = "@" + parameter.name;
+						}
+
+						if (parameter.defaultValue != null)
                         {
                             OperationEvaluation value = parameter.defaultValue.Evaluate(this);
 
@@ -456,12 +466,16 @@ namespace GDScriptBridge.Generator.Bridge
                                 if (parametersToInitialize.Contains(parameter))
                                 {
                                     sb.Append($", {parameter.name}.Value");
-                                }
-                                else if (paramTypeInfo is TypeInfoEnum)
-                                {
-                                    sb.Append($", Variant.CreateFrom((int){parameter.name})");
-                                }
-                                else
+								}
+								else if (paramTypeInfo is TypeInfoEnum)
+								{
+									sb.Append($", Variant.CreateFrom((int){parameter.name})");
+								}
+								else if (paramTypeInfo is TypeInfoGDScriptClass)
+								{
+									sb.Append($", {parameter.name}.godotObject");
+								}
+								else
                                 {
                                     sb.Append($", {parameter.name}");
                                 }

@@ -27,7 +27,7 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="GDShrapt.Reader" Version="4.3.2.1-alpha" GeneratePathProperty="true" PrivateAssets="all" />
+		<PackageReference Include="GDShrapt.Reader" Version="4.3.2.3-alpha" GeneratePathProperty="true" PrivateAssets="all" />
 
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.5.0" GeneratePathProperty="true" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4">
