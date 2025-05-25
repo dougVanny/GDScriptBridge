@@ -96,7 +96,7 @@ namespace GDScriptBridge.Types
 			switch (type)
 			{
 				case Type.Bool:
-					return boolValue.ToString();
+					return boolValue.ToString().ToLower();
 				case Type.Long:
 					return longValue.ToString();
 				case Type.Double:

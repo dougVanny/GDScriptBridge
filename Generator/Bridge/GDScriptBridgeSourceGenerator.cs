@@ -16,6 +16,7 @@ namespace GDScriptBridge.Generator.Bridge
     {
         const string GD_SCRIPT_EXTENSION = ".gd";
         const string BUILD_PROPERTY_GodotProjectDir = "build_property.godotprojectdir";
+        const string BUILD_PROPERTY_ExportProperties = "build_property.GDScriptBridge_ExportProperties";
         const string BUILD_METADATA_SkipGenerator = "build_metadata.AdditionalFiles.GDScriptBridge_SkipGenerator";
 
         public void Execute(GeneratorExecutionContext context)
@@ -66,20 +67,26 @@ namespace GDScriptBridge.Generator.Bridge
             codeBundle = new GDBridgeExtensionBundle(gdScriptFolder);
             context.AddSource(uniqueFileNameConverter.Convert("Bundled_" + codeBundle.GetClassName()), codeBundle.GenerateSource());
 
-            codeBundle = new ExportGDBridgeBundle();
-            context.AddSource(uniqueFileNameConverter.Convert("Bundled_" + codeBundle.GetClassName()), codeBundle.GenerateSource());
-
             foreach (GDScriptClassFile file in gdScriptFolder.GetFiles())
             {
                 context.AddSource(uniqueFileNameConverter.Convert("GDScriptBridge_" + file.gdScriptClass.fullCSharpName), file.GenerateSource());
             }
 
-			ExportPropertiesLookup propertiesLookup = new ExportPropertiesLookup(context, gdScriptFolder);
-			foreach (ExportPropertiesLookup.UserClass userClass in propertiesLookup.classes)
+			if (context.AnalyzerConfigOptions.GlobalOptions.TryGetValue(BUILD_PROPERTY_ExportProperties, out string exportProperties) && exportProperties.ToLower().Equals("true"))
 			{
-				ExportPropertiesGenerator generator = new ExportPropertiesGenerator(userClass);
+				codeBundle = new ExportGDBridgeBundle();
+				context.AddSource(uniqueFileNameConverter.Convert("Bundled_" + codeBundle.GetClassName()), codeBundle.GenerateSource());
 
-				context.AddSource(uniqueFileNameConverter.Convert("Partial_" + generator.GetClassName()), generator.GenerateSource());
+				codeBundle = new ExportGDBridgeExtensionBundle();
+				context.AddSource(uniqueFileNameConverter.Convert("Bundled_" + codeBundle.GetClassName()), codeBundle.GenerateSource());
+
+				ExportPropertiesLookup propertiesLookup = new ExportPropertiesLookup(context, gdScriptFolder);
+				foreach (ExportPropertiesLookup.UserClass userClass in propertiesLookup.classes)
+				{
+					ExportPropertiesGenerator generator = new ExportPropertiesGenerator(userClass);
+
+					context.AddSource(uniqueFileNameConverter.Convert("Partial_" + generator.GetClassName()), generator.GenerateSource());
+				}
 			}
 		}
 

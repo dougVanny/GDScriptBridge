@@ -5,7 +5,7 @@
 	  <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 	  <LangVersion>preview</LangVersion>
 	  <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-	  <Version>0.1.0-alpha</Version>
+	  <Version>0.1.1-alpha</Version>
 	  <Authors>dougVanny</Authors>
 	  <Product>GDScriptBridge</Product>
 	  <Description>
@@ -17,8 +17,8 @@
 	  <RepositoryUrl>https://github.com/dougVanny/GDScriptBridge</RepositoryUrl>
 	  <RepositoryType>git</RepositoryType>
 	  <PackageTags>GDScript bridge sourcegenerator source code generator codegeneration Godot</PackageTags>
-	  <AssemblyVersion>0.1.0</AssemblyVersion>
-	  <FileVersion>0.1.0</FileVersion>
+	  <AssemblyVersion>0.1.1</AssemblyVersion>
+	  <FileVersion>0.1.1</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>

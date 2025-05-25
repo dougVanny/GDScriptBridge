@@ -1,5 +1,6 @@
 <Project>
 	<ItemGroup>
+		<CompilerVisibleProperty Include="exportProperties" />
 		<CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="GDScriptBridge_SkipGenerator" />
 	</ItemGroup>
 </Project>
